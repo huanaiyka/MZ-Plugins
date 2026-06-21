@@ -7,5 +7,5 @@ Plugins for RPG Maker MZ
 所有插件遵守MIT协议，请自由地使用。
 署名请标注“幻爱”或“Huanaiyka”，也可以标注“幻愛”。
 
-衷心感谢为RPGmaker世界做出贡献的作者们。
-请享受RPGmaker的乐趣，祝你玩的开心(｡･ω･｡)ﾉ♡
+衷心感谢为RPGMaker世界做出贡献的作者们。
+请享受RPGMaker的乐趣，祝你玩的开心(｡･ω･｡)ﾉ♡
