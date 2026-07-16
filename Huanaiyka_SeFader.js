@@ -3,19 +3,14 @@
 //=============================================================================
 /*:
  * @target MZ
- * @plugindesc 为SE提供淡入淡出
+ * @plugindesc 为SE提供平滑的淡入淡出
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help 
  * ============================================================================
  * 简介
  * ============================================================================
- * 本插件为音效（SE）添加平滑的淡入与淡出功能，
- * 专为长音效（背景环境声、脚步声循环、持续警报等）优化。
- * 
- * - 默认接管原生“播放 SE”指令，所有事件播放的 SE 都可淡出。
- * - 支持同时播放多个 SE，并可一次性淡出所有 SE。
- * - 自动适配 .ogg / .m4a 格式。
+ * 本插件通过平滑控制音量，为 SE 音效提供淡入与淡出功能。
  * 
 ============================================================================
  * 脚本调用
@@ -23,19 +18,6 @@
  * $gameSystem.fadeInSe(name, volume, frames, pitch, pan);
  * $gameSystem.fadeOutSe(frames);
  * ============================================================================
- * 注意事项
- * ============================================================================
- * - 音效文件请放在 audio/se 文件夹，支持 .ogg 或 .m4a。
- * - 淡出帧数建议 60~120（60帧≈1秒）。
- * 
- * - 该插件还未做到对 ME 的控制，仅代码中含有 ME 相关的残留。
- * ============================================================================
- * 
- * @param replaceNativeSe
- * @text 替换原生播放 SE
- * @desc 是否用插件的淡入效果替换默认的“播放 SE”指令。默认 true。
- * @type boolean
- * @default true
  * 
  * @command FadeInSE
  * @text 淡入播放 SE
@@ -43,7 +25,7 @@
  * 
  * @arg name
  * @text 音效名称
- * @desc audio/se 文件夹下的文件名（不含扩展名）。
+ * @desc audio/se 文件夹下的文件名。
  * @type file
  * @dir audio/se
  * @default ""
@@ -78,336 +60,139 @@
  * 
  * @arg frames
  * @text 淡出帧数
- * @desc 完成淡出所需的帧数（60帧≈1秒）。不填则默认为 60。
+ * @desc 完成淡出所需的帧数（60帧≈1秒）。
  * @type number
  * @default 60
- * 
  */
 
 (function() {
     'use strict';
 
-    const params = PluginManager.parameters('Huanaiyka_SeFader');
-    const replaceNative = params['replaceNativeSe'] !== 'false';
-
-    let audioContext = null;
-    function getAudioContext() {
-        if (audioContext) return audioContext;
-        if (window.WebAudio && window.WebAudio._context) audioContext = window.WebAudio._context;
-        else if (AudioManager && AudioManager._context) audioContext = AudioManager._context;
-        return audioContext;
-    }
-
-    const extensions = ['ogg', 'm4a'];
-    function loadAudio(folder, name, onSuccess, onError) {
-        let idx = 0;
-        function tryLoad() {
-            if (idx >= extensions.length) {
-                onError(`无法加载 ${folder}/${name}`);
-                return;
-            }
-            const url = `audio/${folder}/${name}.${extensions[idx]}`;
-            const req = new XMLHttpRequest();
-            req.open('GET', url);
-            req.responseType = 'arraybuffer';
-            req.onload = () => {
-                if (req.status === 200) onSuccess(req.response, url);
-                else { idx++; tryLoad(); }
-            };
-            req.onerror = () => { idx++; tryLoad(); };
-            req.send();
-        }
-        tryLoad();
-    }
-
-    class FadeableSe {
-        constructor(name, volume, fadeInFrames, pitch, pan, onEnd) {
-            this.name = name;
-            this.targetVolume = Math.min(100, Math.max(0, volume));
-            this.currentVolume = (fadeInFrames > 0) ? 0 : this.targetVolume;
-            this.fadeInTotal = fadeInFrames;
-            this.fadeInRem = fadeInFrames;
-            this.fadeOutTotal = 0;
-            this.fadeOutRem = 0;
-            this.fadeOutStartVolume = this.currentVolume;
-            this.isPlaying = true;
-            this.onEnd = onEnd;
-            this.gain = null;
-            this.src = null;
-            this.pitch = pitch / 100;
-            this.pan = pan;
-            this._load();
-        }
-        _load() {
-            loadAudio('se', this.name, (data, url) => {
-                const ctx = getAudioContext();
-                if (!ctx) return this._stop(true);
-                ctx.decodeAudioData(data, (buf) => {
-                    this._play(buf, url);
-                }, () => { this._stop(true); });
-            }, () => { this._stop(true); });
-        }
-        _play(buf, url) {
-            const ctx = getAudioContext();
-            if (!ctx) return this._stop(true);
-            this.gain = ctx.createGain();
-            this.gain.gain.value = this.currentVolume / 100;
-            let out = this.gain;
-            if (this.pan !== 0 && ctx.createStereoPanner) {
-                const panner = ctx.createStereoPanner();
-                panner.pan.value = this.pan / 100;
-                this.gain.connect(panner);
-                out = panner;
-            }
-            this.src = ctx.createBufferSource();
-            this.src.buffer = buf;
-            this.src.playbackRate.value = this.pitch;
-            this.src.connect(this.gain);
-            out.connect(ctx.destination);
-            this.src.start();
-            this.src.onended = () => this._stop(true);
-        }
-        update() {
-            if (!this.isPlaying) return false;
-            if (this.fadeInRem > 0) {
-                const progress = this.fadeInTotal - this.fadeInRem;
-                this.currentVolume = this.targetVolume * progress / this.fadeInTotal;
-                if (this.gain) this.gain.gain.value = this.currentVolume / 100;
-                this.fadeInRem--;
-                return true;
-            }
-            if (this.fadeOutRem > 0) {
-                const step = this.fadeOutStartVolume / this.fadeOutTotal;
-                this.currentVolume -= step;
-                if (this.currentVolume < 0) this.currentVolume = 0;
-                if (this.gain) this.gain.gain.value = this.currentVolume / 100;
-                this.fadeOutRem--;
-                if (this.fadeOutRem === 0) this._stop(true);
-                return true;
-            }
-            return true;
-        }
-        fadeOut(frames, callback) {
-            if (!this.isPlaying) return;
-            if (frames <= 0) {
-                this._stop(true);
-                if (callback) callback();
-                return;
-            }
-            this.fadeInRem = 0;
-            this.fadeOutTotal = frames;
-            this.fadeOutRem = frames;
-            this.fadeOutStartVolume = this.currentVolume;
-            this.onEnd = () => { this._stop(true); if (callback) callback(); };
-        }
-        _stop(callOnEnd) {
-            if (!this.isPlaying) return;
-            this.isPlaying = false;
-            if (this.src) { try { this.src.stop(); } catch(e) {} this.src.disconnect(); this.src = null; }
-            if (this.gain) { this.gain.disconnect(); this.gain = null; }
-            if (callOnEnd && this.onEnd) this.onEnd();
-        }
-        isActive() { return this.isPlaying; }
-    }
-
-    // ---------- ME 类：完全参照 SE 的淡出逻辑 ----------
-    class FadeableMe {
-        constructor(name, volume, fadeInFrames, onEnd) {
-            this.name = name;
-            this.targetVolume = Math.min(100, Math.max(0, volume));
-            this.currentVolume = 0;
-            this.fadeInTotal = fadeInFrames;
-            this.fadeInRem = fadeInFrames;
-            this.fadeOutTotal = 0;
-            this.fadeOutRem = 0;
-            this.fadeOutStartVolume = 0;
-            this.isPlaying = true;
-            this.onEnd = onEnd;
-            this.gain = null;
-            this.src = null;
-            this._originalBgm = AudioManager.saveBgm();
-            AudioManager.stopBgm();
-            this._load();
-        }
-        _load() {
-            loadAudio('me', this.name, (data, url) => {
-                const ctx = getAudioContext();
-                if (!ctx) return this._restore();
-                ctx.decodeAudioData(data, (buf) => {
-                    this._play(buf, url);
-                }, () => { this._restore(); });
-            }, () => { this._restore(); });
-        }
-        _play(buf, url) {
-            const ctx = getAudioContext();
-            if (!ctx) return this._restore();
-            this.gain = ctx.createGain();
-            this.gain.gain.value = 0;
-            this.src = ctx.createBufferSource();
-            this.src.buffer = buf;
-            this.src.connect(this.gain);
-            this.gain.connect(ctx.destination);
-            this.src.start();
-            // 保存原始回调，淡出期间会临时覆盖
-            this._originalOnEnded = () => this._restore();
-            this.src.onended = this._originalOnEnded;
-        }
-        update() {
-            if (!this.isPlaying) return false;
-            // 淡入
-            if (this.fadeInRem > 0) {
-                const progress = this.fadeInTotal - this.fadeInRem;
-                this.currentVolume = this.targetVolume * progress / this.fadeInTotal;
-                if (this.gain) this.gain.gain.value = this.currentVolume / 100;
-                this.fadeInRem--;
-                return true;
-            }
-            // 淡出（完全同 SE 的线性衰减）
-            if (this.fadeOutRem > 0) {
-                const step = this.fadeOutStartVolume / this.fadeOutTotal;
-                this.currentVolume -= step;
-                if (this.currentVolume < 0) this.currentVolume = 0;
-                if (this.gain) this.gain.gain.value = this.currentVolume / 100;
-                this.fadeOutRem--;
-                if (this.fadeOutRem === 0) {
-                    this._restore();   // 音量已归零，恢复 BGM
-                }
-                return true;
-            }
-            return true;
-        }
-        fadeOut(frames, callback) {
-            if (!this.isPlaying) return;
-            if (frames <= 0) {
-                this._restore();
-                if (callback) callback();
-                return;
-            }
-            // 淡出期间屏蔽自然结束回调，防止提前恢复 BGM
-            if (this.src) {
-                this.src.onended = () => {};
-            }
-            this.fadeInRem = 0;
-            this.fadeOutTotal = frames;
-            this.fadeOutRem = frames;
-            this.fadeOutStartVolume = this.currentVolume;
-            this.onEnd = () => {
-                this._restore();
-                if (callback) callback();
-            };
-        }
-        _restore() {
-            if (!this.isPlaying) return;
-            this.isPlaying = false;
-            if (this.src) {
-                try { this.src.stop(); } catch(e) {}
-                this.src.disconnect();
-                this.src = null;
-            }
-            if (this.gain) {
-                this.gain.disconnect();
-                this.gain = null;
-            }
-            if (this._originalBgm) {
-                AudioManager.playBgm(this._originalBgm);
-            }
-            if (this.onEnd) this.onEnd();
-        }
-        isActive() { return this.isPlaying; }
-    }
-
-    const manager = {
-        seList: [],
-        currentMe: null,
-        update() {
-            for (let i = this.seList.length-1; i >= 0; i--) {
-                const se = this.seList[i];
-                if (se.isActive()) se.update();
-                else this.seList.splice(i,1);
-            }
-            if (this.currentMe && this.currentMe.isActive()) {
-                this.currentMe.update();
-                if (!this.currentMe.isActive()) this.currentMe = null;
-            }
-        },
-        fadeInSe(name, vol, frames, pitch=100, pan=0) {
-            const se = new FadeableSe(name, vol, frames, pitch, pan);
-            this.seList.push(se);
-        },
-        fadeOutSe(frames) {
-            if (this.seList.length === 0) return;
-            for (const se of this.seList) se.fadeOut(frames);
-        },
-        fadeInMe(name, vol, frames) {
-            if (this.currentMe && this.currentMe.isActive()) {
-                this.currentMe.fadeOut(0, () => { this.currentMe = new FadeableMe(name, vol, frames); });
-            } else {
-                this.currentMe = new FadeableMe(name, vol, frames);
-            }
-        },
-        fadeOutMe(frames) {
-            if (this.currentMe && this.currentMe.isActive()) this.currentMe.fadeOut(frames);
-        }
-    };
-
-    Game_System.prototype.fadeInSe = function(name, vol, frames, pitch=100, pan=0) {
-        manager.fadeInSe(name, vol, frames, pitch, pan);
-    };
-    Game_System.prototype.fadeOutSe = function(frames) {
-        manager.fadeOutSe(frames);
-    };
-    Game_System.prototype.fadeInMe = function(name, vol, frames) {
-        manager.fadeInMe(name, vol, frames);
-    };
-    Game_System.prototype.fadeOutMe = function(frames) {
-        manager.fadeOutMe(frames);
-    };
-
-    if (replaceNative) {
-        const orig = AudioManager.playSe;
-        AudioManager.playSe = function(se) {
-            if (se && se.name) {
-                manager.fadeInSe(se.name, se.volume ?? 100, 0, se.pitch ?? 100, se.pan ?? 0);
-            } else {
-                orig.call(this, se);
-            }
-        };
-    }
-
-    const _baseUpdate = Scene_Base.prototype.update;
-    Scene_Base.prototype.update = function() {
-        _baseUpdate.call(this);
-        manager.update();
-    };
-    (function raf() { manager.update(); requestAnimationFrame(raf); })();
-
     const pluginName = 'Huanaiyka_SeFader';
+
+    // 存放当前正在淡入淡出的 SE 辅助对象
+    let activeFadingSes = [];
+
+    // 更新音量的核心逻辑
+    const updateFaders = function() {
+        for (let i = activeFadingSes.length - 1; i >= 0; i--) {
+            const fader = activeFadingSes[i];
+            const buffer = fader.buffer;
+
+            // 如果 buffer 已经被销毁或停止播放，则移出队列
+            if (!buffer || !buffer.isPlaying()) {
+                activeFadingSes.splice(i, 1);
+                continue;
+            }
+
+            if (fader.mode === 'in') {
+                fader.currentFrame++;
+                const progress = Math.min(1, fader.currentFrame / fader.targetFrames);
+                buffer.volume = (fader.startVolume + (fader.targetVolume - fader.startVolume) * progress) / 100;
+                if (fader.currentFrame >= fader.targetFrames) {
+                    activeFadingSes.splice(i, 1);
+                }
+            } else if (fader.mode === 'out') {
+                fader.currentFrame++;
+                const progress = Math.min(1, fader.currentFrame / fader.targetFrames);
+                buffer.volume = (fader.startVolume * (1 - progress)) / 100;
+                if (fader.currentFrame >= fader.targetFrames) {
+                    buffer.stop();
+                    activeFadingSes.splice(i, 1);
+                }
+            }
+        }
+    };
+
+    // 挂载到场景更新中，安全可靠，不使用全局 requestAnimationFrame
+    const _Scene_Base_update = Scene_Base.prototype.update;
+    Scene_Base.prototype.update = function() {
+        _Scene_Base_update.call(this);
+        updateFaders();
+    };
+
+    // --- 核心方法实现 ---
+    
+    // 淡入播放 SE
+    const fadeInSe = function(name, volume, frames, pitch = 100, pan = 0) {
+        if (!name) return;
+        const se = { name: name, volume: volume, pitch: pitch, pan: pan };
+        
+        // 使用原生方法播放并获取 WebAudio 实例
+        const buffer = AudioManager.createBuffer('se', name);
+        if (buffer) {
+            buffer.volume = 0; // 从 0 开始淡入
+            buffer.pitch = (pitch || 100) / 100;
+            buffer.pan = (pan || 0) / 100;
+            buffer.play(false);
+
+            // 记录到淡入列表
+            activeFadingSes.push({
+                buffer: buffer,
+                mode: 'in',
+                startVolume: 0,
+                targetVolume: volume,
+                currentFrame: 0,
+                targetFrames: Math.max(1, frames)
+            });
+
+            // 顺手丢进原生的静态缓冲池，防止被垃圾回收
+            AudioManager._seBuffers.push(buffer);
+            AudioManager.cleanupSe();
+        }
+    };
+
+    // 淡出当前所有正在播放的 SE
+    const fadeOutSe = function(frames) {
+        const targetFrames = Math.max(1, frames);
+
+        // 1. 先把当前记录在淡入状态的 SE 转为淡出
+        activeFadingSes.forEach(fader => {
+            fader.mode = 'out';
+            fader.startVolume = (fader.buffer.volume || 0) * 100;
+            fader.currentFrame = 0;
+            fader.targetFrames = targetFrames;
+        });
+
+        // 2. 找到原生 AudioManager 里正在播放但没被我们记录的 SE，也丢进淡出队列
+        AudioManager._seBuffers.forEach(buffer => {
+            if (buffer && buffer.isPlaying()) {
+                const isAlreadyFading = activeFadingSes.some(fader => fader.buffer === buffer);
+                if (!isAlreadyFading) {
+                    activeFadingSes.push({
+                        buffer: buffer,
+                        mode: 'out',
+                        startVolume: (buffer.volume || 0) * 100,
+                        currentFrame: 0,
+                        targetFrames: targetFrames
+                    });
+                }
+            }
+        });
+    };
+
+    // --- 注册 API 到 Game_System 方便脚本调用 ---
+    Game_System.prototype.fadeInSe = function(name, vol, frames, pitch = 100, pan = 0) {
+        fadeInSe(name, vol, frames, pitch, pan);
+    };
+
+    Game_System.prototype.fadeOutSe = function(frames) {
+        fadeOutSe(frames);
+    };
+
+    // --- 注册插件命令 ---
     PluginManager.registerCommand(pluginName, "FadeInSE", args => {
         const name = args.name;
-        const volume = parseInt(args.volume, 10);
-        const frames = parseInt(args.frames, 10);
-        const pitch = args.pitch !== undefined ? parseInt(args.pitch, 10) : 100;
-        const pan = args.pan !== undefined ? parseInt(args.pan, 10) : 0;
-        if (name && !isNaN(volume) && !isNaN(frames)) {
-            manager.fadeInSe(name, volume, frames, pitch, pan);
-        }
+        const volume = parseInt(args.volume, 10) || 100;
+        const frames = parseInt(args.frames, 10) || 30;
+        const pitch = parseInt(args.pitch, 10) || 100;
+        const pan = parseInt(args.pan, 10) || 0;
+        fadeInSe(name, volume, frames, pitch, pan);
     });
+
     PluginManager.registerCommand(pluginName, "FadeOutSE", args => {
-        let frames = parseInt(args.frames, 10);
-        if (isNaN(frames)) frames = 60;
-        manager.fadeOutSe(frames);
+        const frames = parseInt(args.frames, 10) || 60;
+        fadeOutSe(frames);
     });
-    PluginManager.registerCommand(pluginName, "FadeInME", args => {
-        const name = args.name;
-        const volume = parseInt(args.volume, 10);
-        const frames = parseInt(args.frames, 10);
-        if (name && !isNaN(volume) && !isNaN(frames)) {
-            manager.fadeInMe(name, volume, frames);
-        }
-    });
-    PluginManager.registerCommand(pluginName, "FadeOutME", args => {
-        let frames = parseInt(args.frames, 10);
-        if (isNaN(frames)) frames = 60;
-        manager.fadeOutMe(frames);
-    });
+
 })();
