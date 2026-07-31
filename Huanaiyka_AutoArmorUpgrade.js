@@ -22,8 +22,7 @@
  *     $gameParty.members().some(actor => actor.equips().some(equip => equip && equip.id === 装备ID))
  *     检测全队是否有人装备了指定防具。
  * 
-============================================================================
- * 
+ * ============================================================================
  * @param showMessage
  * @text 显示消息
  * @desc 升级成功后是否在对话框中显示提示
@@ -64,6 +63,12 @@
  * @desc 输入数字指定槽位（留空或-1为自动检测）
  * @default -1
  *
+ * @arg silent
+ * @text 静默升级
+ * @desc 若开启，则不显示升级消息（覆盖全局设置）
+ * @type boolean
+ * @default false
+ *
  * @command upgradeByBase
  * @text 升级防具（基础+变量）
  * @desc 基于基础防具ID和等级变量进行链式升级
@@ -97,6 +102,12 @@
  * @desc 输入数字指定槽位（留空或-1为自动检测）
  * @default -1
  *
+ * @arg silent
+ * @text 静默升级
+ * @desc 若开启，则不显示升级消息（覆盖全局设置）
+ * @type boolean
+ * @default false
+ *
  * @command upgradeSlot
  * @text 升级当前槽位（ID+1）
  * @desc 将指定槽位当前装备的防具自动升级到ID+1（假设ID连续）
@@ -111,6 +122,12 @@
  * @type number
  * @desc 输入数字指定要升级的槽位
  * @default 1
+ *
+ * @arg silent
+ * @text 静默升级
+ * @desc 若开启，则不显示升级消息（覆盖全局设置）
+ * @type boolean
+ * @default false
  *
  * @command upgradeParty
  * @text 升级全队防具（按装备搜索）
@@ -128,6 +145,12 @@
  * @desc 升级后的防具
  * @default 2
  *
+ * @arg silent
+ * @text 静默升级
+ * @desc 若开启，则不显示升级消息（覆盖全局设置）
+ * @type boolean
+ * @default false
+ *
  * @command upgradePartyAuto
  * @text 升级全队防具（自动ID+1）
  * @desc 检测全队是否有人装备了指定防具，若有则自动升级到ID+1（假设ID连续），若无则忽略
@@ -137,6 +160,12 @@
  * @type armor
  * @desc 需要查找并升级的防具（新防具ID = 旧防具ID + 1）
  * @default 1
+ *
+ * @arg silent
+ * @text 静默升级
+ * @desc 若开启，则不显示升级消息（覆盖全局设置）
+ * @type boolean
+ * @default false
  */
 
 var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
@@ -179,8 +208,8 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
         return null;
     }
 
-    // 核心升级逻辑（直接指定新旧ID），返回是否成功
-    function upgradeArmor(actorId, oldArmorId, newArmorId, slotId) {
+    // 核心升级逻辑（直接指定新旧ID），增加 silent 参数控制是否显示消息
+    function upgradeArmor(actorId, oldArmorId, newArmorId, slotId, silent) {
         var actor = $gameActors.actor(actorId);
         if (!actor) {
             return false;
@@ -235,7 +264,8 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
         // 装备新防具到同一槽位
         actor.changeEquip(targetSlot, newArmor);
 
-        if (showMessage) {
+        // 静默判断：如果 silent 为 true，则不显示；否则根据全局 showMessage
+        if (!silent && showMessage) {
             var newArmorName = getArmorName(newArmorId);
             var text = successMessage.replace('%1', oldArmorName).replace('%2', newArmorName);
             $gameMessage.add(text);
@@ -244,15 +274,16 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
         return true;
     }
 
-    // --- 原有命令注册 ---
+    // --- 命令注册（均支持 silent） ---
     PluginManager.registerCommand(pluginName, 'upgrade', function(args) {
         var actorId = Number(args.actorId);
         var oldArmorId = Number(args.oldArmorId);
         var newArmorId = Number(args.newArmorId);
         var slotId = args.slotId !== undefined ? Number(args.slotId) : -1;
         if (slotId === -1) slotId = undefined;
+        var silent = args.silent === 'true';
 
-        upgradeArmor(actorId, oldArmorId, newArmorId, slotId);
+        upgradeArmor(actorId, oldArmorId, newArmorId, slotId, silent);
     });
 
     PluginManager.registerCommand(pluginName, 'upgradeByBase', function(args) {
@@ -262,6 +293,7 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
         var conditionLevel = Number(args.conditionLevel);
         var slotId = args.slotId !== undefined ? Number(args.slotId) : -1;
         if (slotId === -1) slotId = undefined;
+        var silent = args.silent === 'true';
 
         var actor = $gameActors.actor(actorId);
         if (!actor) {
@@ -276,7 +308,7 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
             return;
         }
 
-        var success = upgradeArmor(actorId, oldArmorId, newArmorId, slotId);
+        var success = upgradeArmor(actorId, oldArmorId, newArmorId, slotId, silent);
         if (success) {
             $gameVariables.setValue(levelVarId, currentLevelIndex + 1);
         }
@@ -285,6 +317,7 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
     PluginManager.registerCommand(pluginName, 'upgradeSlot', function(args) {
         var actorId = Number(args.actorId);
         var slotId = Number(args.slotId);
+        var silent = args.silent === 'true';
 
         var actor = $gameActors.actor(actorId);
         if (!actor) {
@@ -299,7 +332,6 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
         if (!equip) {
             return;
         }
-        // 不检查etypeId
         var oldArmorId = equip.id;
         var newArmorId = oldArmorId + 1;
 
@@ -307,14 +339,14 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
             return;
         }
 
-        upgradeArmor(actorId, oldArmorId, newArmorId, slotId);
+        upgradeArmor(actorId, oldArmorId, newArmorId, slotId, silent);
     });
 
     PluginManager.registerCommand(pluginName, 'upgradeParty', function(args) {
         var oldArmorId = Number(args.oldArmorId);
         var newArmorId = Number(args.newArmorId);
+        var silent = args.silent === 'true';
 
-        // 检查新防具是否存在
         if (!$dataArmors[newArmorId]) {
             return;
         }
@@ -326,15 +358,14 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
 
         var actor = result.actor;
         var slotId = result.slotId;
-        upgradeArmor(actor.actorId(), oldArmorId, newArmorId, slotId);
+        upgradeArmor(actor.actorId(), oldArmorId, newArmorId, slotId, silent);
     });
 
-    // --- 新增命令：全队搜索并自动升级到 ID+1 ---
     PluginManager.registerCommand(pluginName, 'upgradePartyAuto', function(args) {
         var oldArmorId = Number(args.oldArmorId);
         var newArmorId = oldArmorId + 1;
+        var silent = args.silent === 'true';
 
-        // 检查新防具是否存在
         if (!$dataArmors[newArmorId]) {
             return;
         }
@@ -346,7 +377,7 @@ var Huanaiyka_AutoArmorUpgrade = Huanaiyka_AutoArmorUpgrade || {};
 
         var actor = result.actor;
         var slotId = result.slotId;
-        upgradeArmor(actor.actorId(), oldArmorId, newArmorId, slotId);
+        upgradeArmor(actor.actorId(), oldArmorId, newArmorId, slotId, silent);
     });
 
 })();

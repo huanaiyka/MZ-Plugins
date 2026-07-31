@@ -1,7 +1,8 @@
 /*:
  * @target MZ
- * @plugindesc [v1.3] 智能敌人伪装与对话同步系统 (可视化选择版)
- * @author 智能助手
+ * @plugindesc 智能敌人伪装系统 
+ * @author 幻爱
+ * @url https://github.com/huanaiyka/MZ-Plugins
  * 
  * @param disguiseVarId
  * @text 伪装目标ID变量
@@ -12,34 +13,78 @@
  * @param disguiseList
  * @text 伪装对象列表
  * @type struct<DisguiseTarget>[]
- * @desc 在这里统一配置所有伪装/变身对象的数据。完全独立，不占用任何原本的数据库槽位。
+ * @desc 在这里统一配置所有伪装/变身对象的数据。
  * @default []
  * 
  * @help
- * ■ 核心功能：
- * 1. 在插件参数中“一站式”配置所有伪装角色的名字、战斗图（支持直观选择文件）和对话框头像。
- * 2. 数据库不需要添加任何多余敌人，只需用一个变量（如15号变量）指定伪装列表中的“伪装ID”即可。
- * 3. 战斗中自动寻找带有 <disguiser> 标签的敌人，并根据该变量瞬间完成变身。
- *
- * ■ 数据库设置 (Notetags)：
- * 1. 在“伪装者（如宝箱怪）”的注释框中输入标签以识别它：
+ * ============================================================================
+ * 核心功能：
+ * ============================================================================
+ * 1. 在插件参数中配置所有伪装角色的名字、战斗图、对话框头像和地图行走图。
+ * 2. 自动寻找带有 <disguiser> 标签的敌人或地图事件，并根据“伪装ID”瞬间完成变身。
+ * 3. 提供“伪装者发言”指令，自动适配变身/本体状态下的名字和头像。
+ * ============================================================================
+ * 数据库设置
+ * ============================================================================
+ * 1. 在“伪装者（如百变怪）”的注释框中输入标签以识别它：
  *    <disguiser>
- * 
+ *
  * 2. 在“伪装者”的注释框中，还可以绑定它显露本体（解除伪装）后的对话头像：
  *    <face: 图像文件名, 头像索引>
- *    例如： <face: Monster, 3>  （代表显露本体时，使用 img/faces/Monster.png 的第4张头像）
- * 
- * ■ 插件指令：
- * 1. 【设置/激活伪装】 (setupDisguise)
+ *    例如： <face: Monster, 3>
+ *    （代表显露本体时，使用 img/faces/Monster.png 的第4张头像）
+ *
+ * ============================================================================
+ * 插件指令（插件命令）
+ * ============================================================================
+ * 1. 【激活伪装】 (setupDisguise)
  *    让战斗中带有 <disguiser> 标签的敌人变成当前变量指定形态的形象。
- * 
+ *    注：进入战斗时默认自动激活。
+ *
  * 2. 【解除伪装】 (clearDisguise)
- *    让它们瞬间恢复本体（如宝箱怪），战斗图和对话框也同步变回本体。
- * 
- * 3. 【特定敌人发言】 (enemySpeak)
+ *    让它们瞬间恢复本体，战斗图和对话框也同步变回本体。
+ *
+ * 3. 【伪装者发言】 (enemySpeak)
  *    让这个伪装者说话。它会自动检测自己目前是“变身状态”还是“本体状态”：
- *    - 变身状态下：自动使用你在参数里配好的名字、头像。
+ *    - 变身状态下：自动使用你在参数里对应的名字、头像。
  *    - 本体状态下：自动使用数据库本体怪物的名字，以及本体注释里的 <face> 头像。
+ *
+ * 4. 【应用地图伪装】 (applyMapDisguise)
+ *    将当前触发事件的行走图切换为当前伪装配置的行走图。
+ *    该指令对任何事件均有效，不要求事件带有 <disguiser> 标签，
+ *    可用于临时伪装任意事件。
+ *
+ * 5. 【解除地图伪装】 (clearMapDisguise)
+ *    将当前触发事件的行走图恢复为事件原本设定的行走图。
+ *    适用于解除单个事件的伪装状态。
+ *
+ * 6. 【恢复所有地图伪装】 (clearAllMapDisguise)
+ *    将地图上所有事件的行走图恢复为原本设定。
+ *    适用于批量解除伪装。
+ *
+ * ============================================================================
+ * 变量与伪装ID说明
+ * ============================================================================
+ * - 插件参数中设置了一个“伪装目标ID变量”（默认 #15）。
+ * - 你只需在游戏中改变该变量的值（例如通过事件指令“变量操作”），
+ *   伪装者就会自动切换为对应的伪装形态。
+ * - 伪装ID 对应插件参数列表中配置的“伪装对象列表”中的 id 值。
+ *
+ * ============================================================================
+ * 注意事项
+ * ============================================================================
+ * - 战斗中的伪装状态在每场战斗开始时自动重置为“激活”。
+ * - 地图上的伪装事件会在地图加载时自动应用，并会实时响应变量变化。
+ * - 请确保伪装列表中的 ID 唯一且大于 0。
+ * - 如果变量值在列表中找不到匹配项，伪装者将保持本体状态。
+ * ============================================================================
+ * 扩展应用：随机NPC系统
+ * ============================================================================
+ * - 在事件上添加 <disguiser> 标签，然后通过改变“伪装目标ID变量”的数值，
+ * - 即可让该事件自动切换为对应的行走图、名字和头像。
+ * 
+ * - 所有外观模板统一在插件参数中配置，无需额外设置事件页，
+ * - 非常适合实现随机路人、动态NPC或可变身角色等效果。
  *
  * @command setupDisguise
  * @text 激活伪装
@@ -80,6 +125,18 @@
  * @option 下
  * @value 2
  * @default 2
+ *
+ * @command applyMapDisguise
+ * @text 应用地图伪装
+ * @desc 将当前触发事件的行走图切换为当前伪装配置的行走图。
+ *
+ * @command clearMapDisguise
+ * @text 解除地图伪装
+ * @desc 将当前触发事件的行走图恢复为事件原本设定的行走图。
+ *
+ * @command clearAllMapDisguise
+ * @text 恢复所有地图伪装
+ * @desc 将地图上所有事件的行走图恢复为原本设定。
  */
 
 /*~struct~DisguiseTarget:
@@ -130,6 +187,21 @@
  * @max 7
  * @desc 头像格子索引（0-7）。
  * @default 0
+ * 
+ * @param charName
+ * @text 地图行走图文件名
+ * @type file
+ * @dir img/characters
+ * @desc 伪装状态下在地图上显示的行走图。
+ * 
+ * @param charIndex
+ * @text 地图行走图索引
+ * @type number
+ * @min 0
+ * @max 7
+ * @desc 行走图格子索引（0-7）。
+ * @default 0
+ * 
  */
 
 (() => {
@@ -151,7 +223,9 @@
                     svBattlerName: String(item.svBattlerName || ""),
                     hue: Number(item.hue || 0),
                     faceName: String(item.faceName || ""),
-                    faceIndex: Number(item.faceIndex || 0)
+                    faceIndex: Number(item.faceIndex || 0),
+                    charName: String(item.charName || ""),
+                    charIndex: Number(item.charIndex || 0)
                 };
             });
         }
@@ -192,63 +266,103 @@
         }
     }
 
+    // 激活伪装指令
     PluginManager.registerCommand(pluginName, "setupDisguise", () => {
         $gameSystem._isDisguiseActive = true;
         refreshEnemySprites();
     });
 
+    // 解除伪装指令
     PluginManager.registerCommand(pluginName, "clearDisguise", () => {
         $gameSystem._isDisguiseActive = false;
         refreshEnemySprites();
     });
 
+    // 伪装者发言指令
     PluginManager.registerCommand(pluginName, "enemySpeak", function(args) {
-        // 自动在当前敌群中寻找带 <disguiser> 标签的敌人
-        const enemy = $gameTroop.members().find(e => {
-            const originalData = $dataEnemies[e._enemyId];
-            return originalData && originalData.meta.disguiser;
-        });
+        let speakerName = "";
+        let faceName = "";
+        let faceIndex = 0;
+        const config = getCurrentDisguiseConfig();
 
-        if (enemy) {
-            let speakerName = "";
-            let faceName = "";
-            let faceIndex = 0;
-
-            const config = getCurrentDisguiseConfig();
-
-            // 如果当前处于“伪装激活状态”且参数里配有相应数据，直接抓取参数配置
-            if ($gameSystem._isDisguiseActive && config) {
-                speakerName = config.name;
-                faceName = config.faceName;
-                faceIndex = config.faceIndex;
-            } else {
-                // 如果伪装已解除（显示本体），则抓取数据库本体的数据
-                speakerName = enemy.originalName();
-                const originalData = $dataEnemies[enemy._enemyId];
-                if (originalData && originalData.meta.face) {
-                    const parts = originalData.meta.face.split(",");
-                    faceName = parts[0].trim();
-                    faceIndex = parts[1] ? parseInt(parts[1].trim()) : 0;
+        // 1. 判断场景：如果是战斗，从 $gameTroop 找；如果是地图，从 $gameMap.events 找
+        let targetMeta = null;
+        if ($gameParty.inBattle()) {
+            const enemy = $gameTroop.members().find(e => $dataEnemies[e._enemyId]?.meta.disguiser);
+            if (enemy) {
+                targetMeta = $dataEnemies[enemy._enemyId].meta;
+                if ($gameSystem._isDisguiseActive && config) {
+                    speakerName = config.name;
+                    faceName = config.faceName;
+                    faceIndex = config.faceIndex;
+                } else {
+                    speakerName = enemy.originalName();
+                    const parts = targetMeta.face?.split(",");
+                    faceName = parts ? parts[0].trim() : "";
+                    faceIndex = parts ? parseInt(parts[1].trim()) : 0;
                 }
             }
+        } else {
+            // 地图模式：寻找当前触发指令的事件（或者备注含有 <disguiser> 的事件）
+            const event = $gameMap.event($gameMap._interpreter.eventId());
+            if (event && event.event().meta.disguiser) {
+                targetMeta = event.event().meta;
+                if ($gameSystem._isDisguiseActive && config) {
+                    speakerName = config.name;
+                    faceName = config.faceName;
+                    faceIndex = config.faceIndex;
+                } else {
+                    speakerName = event.event().name; // 默认使用事件名
+                    const parts = targetMeta.face?.split(",");
+                    faceName = parts ? parts[0].trim() : "";
+                    faceIndex = parts ? parseInt(parts[1].trim()) : 0;
+                }
+            }
+        }
 
-            // 执行 MZ 标准对话构建
+        if (speakerName !== "") {
             $gameMessage.setSpeakerName(speakerName);
             $gameMessage.setFaceImage(faceName, faceIndex);
             $gameMessage.setBackground(parseInt(args.background || 0));
             $gameMessage.setPositionType(parseInt(args.positionType || 2));
-            
-            const rawText = JSON.parse(args.text);
-            $gameMessage.add(rawText);
-
-            // 让事件等待对话框关闭
-            this.setWaitMode("message");
-        } else {
-            // 兜底：如果没找到伪装者，输出无头像文本
-            const rawText = JSON.parse(args.text);
-            $gameMessage.add(rawText);
+            $gameMessage.add(JSON.parse(args.text));
             this.setWaitMode("message");
         }
+    });
+
+    // 地图行走图修改指令
+    PluginManager.registerCommand(pluginName, "applyMapDisguise", args => {
+        const config = getCurrentDisguiseConfig();
+        const eventId = $gameMap._interpreter.eventId();
+        const event = $gameMap.event(eventId);
+        if (config && config.charName && event) {
+            event.setImage(config.charName, config.charIndex);
+            event.refresh(); 
+        }
+    });
+
+    // 解除当前事件的地图伪装（恢复原始行走图）
+    PluginManager.registerCommand(pluginName, "clearMapDisguise", args => {
+        const eventId = $gameMap._interpreter.eventId();
+        const event = $gameMap.event(eventId);
+        if (event) {
+            const page = event.event().pages[0];
+            if (page) {
+                event.setImage(page.image.characterName, page.image.characterIndex);
+                event.refresh();
+            }
+        }
+    });
+
+    // 恢复所有地图事件的伪装（批量还原）
+    PluginManager.registerCommand(pluginName, "clearAllMapDisguise", args => {
+        $gameMap.events().forEach(event => {
+            const page = event.event().pages[0];
+            if (page) {
+                event.setImage(page.image.characterName, page.image.characterIndex);
+                event.refresh();
+            }
+        });
     });
 
     // 1. 判断该敌人是否属于伪装状态
@@ -298,4 +412,48 @@
         }
         return _Game_Enemy_battlerHue.call(this);
     };
+
+    // --- 新增：地图事件自动伪装逻辑 ---
+    const _Scene_Map_onMapLoaded = Scene_Map.prototype.onMapLoaded;
+    Scene_Map.prototype.onMapLoaded = function() {
+        _Scene_Map_onMapLoaded.call(this);
+        const config = getCurrentDisguiseConfig();
+        if (config && config.charName) {
+            $gameMap.events().forEach(event => {
+                // 检测事件备注中是否含有 <disguiser>
+                if (event.event().meta.disguiser) {
+                    event.setImage(config.charName, config.charIndex);
+                }
+            });
+        }
+    };
+
+    // --- 新增：实时监听变量变化并刷新地图事件 ---
+    const _Game_Variables_setValue = Game_Variables.prototype.setValue;
+    Game_Variables.prototype.setValue = function(variableId, value) {
+        _Game_Variables_setValue.call(this, variableId, value);
+        
+        // 检查变动的变量是否为我们配置的伪装变量
+        if (variableId === disguiseVarId && SceneManager._scene instanceof Scene_Map) {
+            refreshMapDisguise();
+        }
+    };
+
+    // 地图刷新逻辑函数
+    function refreshMapDisguise() {
+        const config = getCurrentDisguiseConfig();
+        $gameMap.events().forEach(event => {
+            if (event.event().meta.disguiser) {
+                if (config && config.charName) {
+                    // 如果有配置，则变身为配置的行走图
+                    event.setImage(config.charName, config.charIndex);
+                } else {
+                    // 如果变量清空或未找到配置，恢复事件原本的图像（需重置事件）
+                    event.setImage(event.event().pages[0].image.characterName, event.event().pages[0].image.characterIndex);
+                }
+                event.refresh(); // 强制刷新渲染
+            }
+        });
+    }
+
 })();

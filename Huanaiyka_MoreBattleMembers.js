@@ -122,7 +122,6 @@ Imported.MoreBattleMembers = true;
     function setPluginEnabled(enabled) {
         if ($gameSystem) {
             $gameSystem._moreBattleMembersEnabled = enabled;
-            console.log(`[${pluginName}] 插件功能已${enabled ? "启用" : "禁用"}（已保存至存档）`);
         }
         refreshBattleUI();
         const scene = SceneManager._scene;
@@ -130,8 +129,6 @@ Imported.MoreBattleMembers = true;
             scene._statusWindow.refresh();
         }
     }
-    
-    console.log(`[${pluginName}] 已加载，初始最大出战人数 = ${customMaxBattleMembers}`);
     
     // 存储原始方法备份
     const _original = {};
@@ -166,7 +163,6 @@ Imported.MoreBattleMembers = true;
         if (newMax < 1) newMax = 1;
         if (newMax > 12) newMax = 12;
         customMaxBattleMembers = newMax;
-        console.log(`[${pluginName}] 最大出战人数已修改为 ${customMaxBattleMembers}`);
         refreshBattleUI();
     };
     

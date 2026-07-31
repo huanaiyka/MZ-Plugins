@@ -1,296 +1,637 @@
 /*:
  * @target MZ
- * @plugindesc 临时队伍切换插件
+ * @plugindesc 临时队伍与道具切换插件 v1.1.0
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
+ * 
  * @help
  * ============================================================================
- * 使用说明
+ * ■ 插件功能简介
  * ============================================================================
- * 本插件提供三个插件指令，用于在进入副本时存储当前队伍并切换到临时队伍，
- * 在离开副本时恢复原队伍。支持多套临时队伍预设。
- * 
- * 插件指令（事件指令 -> 插件指令）：
- * 
- * 1. 存储并切换至临时队伍（自定义成员）：
- *    TempParty SaveAndSwitch [memberIds] [variableId]
- *    - memberIds（可选）: 临时队伍的成员ID列表，用英文逗号分隔，例如 5,6,7
- *      若不填，则使用插件参数中的【默认临时成员】
- *    - variableId（可选）: 用于存储原队伍的变量ID，若不填则使用插件参数中的【默认存储变量ID】
- *    示例：TempParty SaveAndSwitch 5,6,7 10
- *          TempParty SaveAndSwitch        （全部使用默认值）
- * 
- * 2. 存储并切换至临时队伍（使用预设）：
- *    TempParty SaveAndSwitchPreset [presetId] [variableId]
- *    - presetId（必填）: 预设ID（在插件参数【临时队伍预设】中定义，例如 dungeon）
- *    - variableId（可选）: 用于存储原队伍的变量ID，若不填则使用插件参数中的【默认存储变量ID】
- *    示例：TempParty SaveAndSwitchPreset dungeon 10
- *          TempParty SaveAndSwitchPreset boss
- * 
- * 3. 恢复原队伍：
- *    TempParty Restore [variableId]
- *    - variableId（可选）: 之前存储原队伍的变量ID，若不填则使用插件参数中的【默认存储变量ID】
- *    示例：TempParty Restore 10
- *          TempParty Restore
+ * 本插件适用于进入特殊副本、剧情事件或临时挑战时，保存玩家当前的队伍结构及
+ * 背包道具，并切换为指定的临时队伍或清空背包。
+ * 离开副本或事件结束时，可通过指令快速一键还原队伍与道具。
  * 
  * ============================================================================
- * 预设格式说明
+ * ■ 插件指令说明
  * ============================================================================
- * 在插件参数【临时队伍预设】中，可以定义多套临时队伍，格式如下：
- *   预设ID1:角色ID列表; 预设ID2:角色ID列表; ...
- * 示例：
- *   dungeon:5,6,7; boss:8,9,10; explore:1,2,3,4
  * 
- * 预设ID只能使用字母、数字和下划线，角色ID必须是正整数。
+ * 【队伍相关】
+ *  1. 存储并切换至临时队伍（自定义）：
+ *     - 存储当前队伍，并切换为指定的角色列表。
+ *     
+ *  2. 存储并切换至临时队伍（使用预设）：
+ *     - 存储当前队伍，并切换为插件参数中配置好的预设队伍。
  * 
- * ============================================================================
- * 注意事项
- * ============================================================================
- * - 存储原队伍时会完整保存队员顺序，恢复时会按照原顺序入队。
- * - 临时队伍切换时会清空原队伍，请确保临时队伍至少有一名成员。
- * - 如果存储的变量内容无效（非数组），恢复指令会给出控制台警告并跳过操作。
- * - 本插件不依赖任何其他插件，可直接使用。
+ *  3. 存储并保留前 N 位角色：
+ *     - 截取当前队伍的前 N 名角色（默认 1 名），其余队员暂时移出。
+ * 
+ *  4. 恢复原队伍：
+ *     - 还原之前存储的队伍成员及顺序。
+ * 
+ * 【道具相关】
+ *  5. 存储并清空道具：
+ *     - 存储当前背包道具并按选择的类型清空（普通物品/武器/防具/重要物品）。
+ * 
+ *  6. 恢复道具：
+ *     - 还原之前存储的道具。支持选择【是否保留身上现有的物品】。
+ * 
+ * 【组合指令】
+ *  7. 存储全部（队伍+道具）：
+ *     - 同时存储队伍与背包道具，并切换至临时状态。
+ * 
+ *  8. 恢复全部（队伍+道具）：
+ *     - 同时还原队伍与背包道具。支持选择【是否保留身上现有的物品】。
+ * 
  * 
  * @param defaultVariableId
- * @text 默认存储变量ID
- * @desc 默认用于存储原队伍的变量编号（1~9999）
+ * @text 默认队伍存储变量ID
+ * @desc 默认用于存储原队伍数据的游戏变量编号（1~9999）
  * @type variable
  * @default 1
  * 
+ * @param defaultItemVariableId
+ * @text 默认道具存储变量ID
+ * @desc 默认用于存储背包道具数据的游戏变量编号（1~9999）
+ * @type variable
+ * @default 2
+ * 
  * @param defaultTempMembers
- * @text 默认临时成员ID列表
- * @desc 默认的临时队伍成员角色ID，用英文逗号分隔，例如 5,6,7
- * @type string
- * @default 5,6,7
+ * @text 默认临时成员列表
+ * @desc 当未指定成员时默认使用的临时角色列表
+ * @type actor[]
+ * @default ["5","6","7"]
  * 
  * @param tempPresets
  * @text 临时队伍预设
- * @desc 多套临时队伍预设，格式：预设ID:成员列表; 预设ID:成员列表; ... 例如 dungeon:5,6,7; boss:8,9,10
- * @type string
- * @default 
+ * @desc 配置多套常用的临时队伍预设
+ * @type struct<Preset>[]
+ * @default []
  * 
  * @command SaveAndSwitch
- * @text 存储并切换至临时队伍（自定义）
- * @desc 存储当前队伍，并切换到指定成员列表的临时队伍
+ * @text 存储并切换队伍（自定义）
+ * @desc 存储当前队伍，并切换到指定的临时角色列表
  * 
  * @arg memberIds
  * @text 临时成员ID列表
- * @desc 用英文逗号分隔的角色ID，例如 5,6,7。留空则使用插件参数默认值。
+ * @desc 角色ID用英文逗号分隔（例：5,6,7）。留空则使用插件参数默认值。
  * @type string
  * @default
  * 
  * @arg variableId
- * @text 存储变量ID
- * @desc 用于存储原队伍的变量编号，留空则使用插件参数默认值。
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
  * @type variable
- * @default
+ * @default 0
  * 
  * @command SaveAndSwitchPreset
- * @text 存储并切换至临时队伍（使用预设）
- * @desc 存储当前队伍，并切换到预设的临时队伍
+ * @text 存储并切换队伍（预设）
+ * @desc 存储当前队伍，并切换到指定的预设队伍
  * 
  * @arg presetId
- * @text 预设ID
- * @desc 在插件参数【临时队伍预设】中定义的ID
+ * @text 预设标识符(ID)
+ * @desc 在插件参数【临时队伍预设】中配置的预设ID
  * @type string
  * @default
  * 
  * @arg variableId
- * @text 存储变量ID
- * @desc 用于存储原队伍的变量编号，留空则使用插件参数默认值。
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
  * @type variable
- * @default
+ * @default 0
+ * 
+ * @command SaveAndSwitchTopN
+ * @text 存储并保留前 N 位角色
+ * @desc 存储当前队伍，仅保留队头前 N 位角色
+ * 
+ * @arg count
+ * @text 保留角色数量
+ * @desc 保留队伍前几位角色，默认为 1
+ * @type number
+ * @min 1
+ * @default 1
+ * 
+ * @arg variableId
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
  * 
  * @command Restore
  * @text 恢复原队伍
- * @desc 恢复之前存储的队伍
+ * @desc 还原之前存储的队伍成员及顺序
  * 
  * @arg variableId
- * @text 存储变量ID
- * @desc 之前存储原队伍所用的变量编号，留空则使用插件参数默认值。
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
  * @type variable
+ * @default 0
+ * 
+ * @command StoreAndClearItems
+ * @text 存储并清空道具
+ * @desc 存储背包中的道具并进行清空
+ * 
+ * @arg itemTypes
+ * @text 要清空的道具类型
+ * @desc 用逗号分隔: item(物品), weapon(武器), armor(防具), key(重要物品)。留空全部清空。
+ * @type string
  * @default
+ * 
+ * @arg variableId
+ * @text 道具存储变量
+ * @desc 存储道具数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ * 
+ * @command RestoreItems
+ * @text 恢复道具
+ * @desc 还原之前存储的背包道具
+ * 
+ * @arg keepCurrentItems
+ * @text 保留身上现有物品
+ * @desc 是否保留当前背包里已有的物品。否 = 覆盖还原，是 = 叠加还原。
+ * @type boolean
+ * @on 保留
+ * @off 不保留
+ * @default false
+ * 
+ * @arg variableId
+ * @text 道具存储变量
+ * @desc 存储道具数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ * 
+ * @command SaveAll
+ * @text 存储全部（队伍+道具）
+ * @desc 同时存储队伍与道具，并切换到临时状态
+ * 
+ * @arg memberIds
+ * @text 临时成员ID列表
+ * @desc 角色ID用英文逗号分隔（例：5,6,7）。留空使用默认值。
+ * @type string
+ * @default
+ * 
+ * @arg itemTypes
+ * @text 要清空的道具类型
+ * @desc 用逗号分隔: item, weapon, armor, key。留空全部清空。
+ * @type string
+ * @default
+ * 
+ * @arg partyVarId
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ * 
+ * @arg itemVarId
+ * @text 道具存储变量
+ * @desc 存储道具数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ * 
+ * @command RestoreAll
+ * @text 恢复全部（队伍+道具）
+ * @desc 同时还原队伍与背包道具
+ * 
+ * @arg keepCurrentItems
+ * @text 保留身上现有物品
+ * @desc 还原道具时是否保留身上现有物品。否 = 覆盖还原，是 = 叠加还原。
+ * @type boolean
+ * @on 保留
+ * @off 不保留
+ * @default false
+ * 
+ * @arg partyVarId
+ * @text 队伍存储变量
+ * @desc 存储原队伍数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ * 
+ * @arg itemVarId
+ * @text 道具存储变量
+ * @desc 存储道具数据的变量编号。留空使用默认值。
+ * @type variable
+ * @default 0
+ */
+
+/*~struct~Preset:
+ * @param id
+ * @text 预设标识符(ID)
+ * @desc 英文标识符，例如：dungeon 或 boss（在指令中调用此ID）
+ * @type string
+ * @default dungeon
+ *
+ * @param members
+ * @text 预设队伍角色
+ * @desc 该预设包含的角色列表
+ * @type actor[]
+ * @default []
  */
 
 (() => {
     // 读取插件参数
     const parameters = PluginManager.parameters('Huanaiyka_TempParty');
     const defaultVariableId = Number(parameters['defaultVariableId'] || 1);
-    const defaultTempMembersStr = parameters['defaultTempMembers'] || '5,6,7';
-    const tempPresetsStr = parameters['tempPresets'] || '';
+    const defaultItemVariableId = Number(parameters['defaultItemVariableId'] || 2);
+    
+    // 解析默认临时成员列表
+    let defaultTempMembers = [];
+    try {
+        const rawDefaultMembers = JSON.parse(parameters['defaultTempMembers'] || '[]');
+        defaultTempMembers = rawDefaultMembers.map(Number).filter(id => !isNaN(id) && id > 0);
+    } catch (e) {
+        defaultTempMembers = [5, 6, 7];
+    }
 
-    // 解析默认临时成员ID数组
-    const defaultTempMembers = defaultTempMembersStr.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
-
-    // 解析预设
-    const presets = new Map(); // key: presetId (string), value: number[]
-    if (tempPresetsStr.trim()) {
-        const entries = tempPresetsStr.split(';');
-        for (const entry of entries) {
-            const [presetId, membersStr] = entry.split(':');
-            if (presetId && membersStr) {
-                const members = membersStr.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
-                if (members.length > 0) {
-                    presets.set(presetId.trim(), members);
-                } else {
-                    console.warn(`[Huanaiyka_TempParty] 预设 "${presetId}" 的成员列表无效，已跳过。`);
+    // 解析结构体预设列表
+    const presets = new Map();
+    try {
+        const rawPresets = JSON.parse(parameters['tempPresets'] || '[]');
+        for (const presetJson of rawPresets) {
+            const presetObj = JSON.parse(presetJson);
+            if (presetObj && presetObj.id) {
+                const presetId = presetObj.id.trim();
+                const membersRaw = JSON.parse(presetObj.members || '[]');
+                const members = membersRaw.map(Number).filter(id => !isNaN(id) && id > 0);
+                
+                if (presetId && members.length > 0) {
+                    presets.set(presetId, members);
                 }
-            } else {
-                console.warn(`[Huanaiyka_TempParty] 预设格式错误，跳过条目: ${entry}`);
             }
         }
+    } catch (e) {
+        // 静默处理解析异常
     }
 
     // ============================================================================
     // 辅助函数
     // ============================================================================
 
-    /**
-     * 存储当前队伍到指定变量
-     * @param {number} variableId 变量ID
-     */
-    function storeParty(variableId) {
-        const currentMembers = $gameParty._actors.slice(); // 克隆当前队员ID数组
-        $gameVariables.setValue(variableId, currentMembers);
-        console.log(`[Huanaiyka_TempParty] 已存储队伍到变量 ${variableId}，队伍成员：`, currentMembers);
+    function getValidVariableId(varId) {
+        const num = Number(varId);
+        return (num && num > 0) ? num : defaultVariableId;
     }
 
-    /**
-     * 清空当前队伍
-     */
+    function getValidItemVariableId(varId) {
+        const num = Number(varId);
+        return (num && num > 0) ? num : defaultItemVariableId;
+    }
+
+    function storeParty(variableId) {
+        const currentMembers = $gameParty._actors.slice();
+        $gameVariables.setValue(variableId, currentMembers);
+    }
+
     function clearParty() {
         $gameParty._actors.length = 0;
-        // 刷新游戏状态，避免残留
         $gamePlayer.refresh();
         $gameMap.requestRefresh();
     }
 
-    /**
-     * 将指定角色ID列表加入队伍
-     * @param {number[]} actorIds 角色ID数组
-     */
     function addActorsToParty(actorIds) {
         for (const id of actorIds) {
             if (id > 0) {
                 $gameParty.addActor(id);
-            } else {
-                console.warn(`[Huanaiyka_TempParty] 尝试添加无效角色ID: ${id}`);
             }
         }
     }
 
-    /**
-     * 切换队伍到临时成员
-     * @param {number[]} tempMemberIds 临时成员ID列表
-     * @param {number} variableId 存储原队伍的变量ID
-     * @returns {boolean} 是否成功
-     */
-    function switchToTempParty(tempMemberIds, variableId) {
-        if (!tempMemberIds || tempMemberIds.length === 0) {
-            console.error('[Huanaiyka_TempParty] 临时队伍成员列表为空，切换操作已取消。');
+    // ============================================================================
+    // 道具存储/恢复相关函数
+    // ============================================================================
+
+    function parseItemTypes(typeStr) {
+        const validTypes = ['item', 'weapon', 'armor', 'key'];
+        if (!typeStr || typeStr.trim() === '') {
+            return validTypes.slice();
+        }
+        return typeStr.split(',').map(s => s.trim().toLowerCase()).filter(t => validTypes.includes(t));
+    }
+
+    function getItemData(itemTypes) {
+        const data = { item: [], weapon: [], armor: [], key: [] };
+        
+        if (itemTypes.includes('item')) {
+            for (const item of $dataItems) {
+                if (item && item.itypeId === 1 && $gameParty.numItems(item) > 0) {
+                    data.item.push({ id: item.id, count: $gameParty.numItems(item) });
+                }
+            }
+        }
+        
+        if (itemTypes.includes('weapon')) {
+            for (const item of $dataWeapons) {
+                if (item && $gameParty.numItems(item) > 0) {
+                    data.weapon.push({ id: item.id, count: $gameParty.numItems(item) });
+                }
+            }
+        }
+        
+        if (itemTypes.includes('armor')) {
+            for (const item of $dataArmors) {
+                if (item && $gameParty.numItems(item) > 0) {
+                    data.armor.push({ id: item.id, count: $gameParty.numItems(item) });
+                }
+            }
+        }
+        
+        if (itemTypes.includes('key')) {
+            for (const item of $dataItems) {
+                if (item && item.itypeId === 2 && $gameParty.numItems(item) > 0) {
+                    data.key.push({ id: item.id, count: $gameParty.numItems(item) });
+                }
+            }
+        }
+        
+        return data;
+    }
+
+    function storeItems(itemTypes, variableId) {
+        const itemData = getItemData(itemTypes);
+        $gameVariables.setValue(variableId, itemData);
+        return itemData;
+    }
+
+    function clearItems(itemTypes) {
+        if (itemTypes.includes('item')) {
+            const itemsToRemove = $dataItems.filter(item => item && item.itypeId === 1);
+            for (const item of itemsToRemove) {
+                $gameParty.loseItem(item, $gameParty.numItems(item));
+            }
+        }
+        
+        if (itemTypes.includes('weapon')) {
+            const weaponsToRemove = $dataWeapons.filter(item => item);
+            for (const item of weaponsToRemove) {
+                $gameParty.loseItem(item, $gameParty.numItems(item));
+            }
+        }
+        
+        if (itemTypes.includes('armor')) {
+            const armorsToRemove = $dataArmors.filter(item => item);
+            for (const item of armorsToRemove) {
+                $gameParty.loseItem(item, $gameParty.numItems(item));
+            }
+        }
+        
+        if (itemTypes.includes('key')) {
+            const keyItems = $dataItems.filter(item => item && item.itypeId === 2);
+            for (const item of keyItems) {
+                $gameParty.loseItem(item, $gameParty.numItems(item));
+            }
+        }
+    }
+
+    function storeAndClearItems(itemTypes, variableId) {
+        const validVarId = getValidItemVariableId(variableId);
+        const types = parseItemTypes(itemTypes);
+        
+        if (types.length === 0) {
             return false;
         }
-        // 1. 存储当前队伍
-        storeParty(variableId);
-        // 2. 清空队伍
-        clearParty();
-        // 3. 添加临时成员
-        addActorsToParty(tempMemberIds);
-        console.log(`[Huanaiyka_TempParty] 已切换至临时队伍：`, tempMemberIds);
+        
+        storeItems(types, validVarId);
+        clearItems(types);
         return true;
     }
 
     /**
-     * 根据预设ID切换临时队伍
-     * @param {string} presetId 预设ID
-     * @param {number} variableId 存储原队伍的变量ID
-     * @returns {boolean} 是否成功
+     * 恢复道具
+     * @param {number} variableId 变量ID
+     * @param {boolean} keepCurrentItems 是否保留身上现有物品
      */
+    function restoreItems(variableId, keepCurrentItems = false) {
+        const validVarId = getValidItemVariableId(variableId);
+        const storedData = $gameVariables.value(validVarId);
+        
+        if (!storedData || typeof storedData !== 'object') {
+            return false;
+        }
+        
+        // 若不保留身上物品，则先清空存储数据中包含的相关类型
+        if (!keepCurrentItems) {
+            const types = [];
+            if (storedData.item && storedData.item.length > 0) types.push('item');
+            if (storedData.weapon && storedData.weapon.length > 0) types.push('weapon');
+            if (storedData.armor && storedData.armor.length > 0) types.push('armor');
+            if (storedData.key && storedData.key.length > 0) types.push('key');
+            clearItems(types);
+        }
+        
+        // 恢复普通物品
+        if (storedData.item) {
+            for (const entry of storedData.item) {
+                const item = $dataItems[entry.id];
+                if (item && item.itypeId === 1) {
+                    $gameParty.gainItem(item, entry.count);
+                }
+            }
+        }
+        
+        // 恢复武器
+        if (storedData.weapon) {
+            for (const entry of storedData.weapon) {
+                const item = $dataWeapons[entry.id];
+                if (item) {
+                    $gameParty.gainItem(item, entry.count);
+                }
+            }
+        }
+        
+        // 恢复防具
+        if (storedData.armor) {
+            for (const entry of storedData.armor) {
+                const item = $dataArmors[entry.id];
+                if (item) {
+                    $gameParty.gainItem(item, entry.count);
+                }
+            }
+        }
+        
+        // 恢复重要物品
+        if (storedData.key) {
+            for (const entry of storedData.key) {
+                const item = $dataItems[entry.id];
+                if (item && item.itypeId === 2) {
+                    $gameParty.gainItem(item, entry.count);
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    // ============================================================================
+    // 队伍切换函数
+    // ============================================================================
+
+    function switchToTempParty(tempMemberIds, variableId) {
+        if (!tempMemberIds || tempMemberIds.length === 0) {
+            return false;
+        }
+        const validVarId = getValidVariableId(variableId);
+        storeParty(validVarId);
+        clearParty();
+        addActorsToParty(tempMemberIds);
+        return true;
+    }
+
     function switchToTempPartyByPreset(presetId, variableId) {
         const members = presets.get(presetId);
         if (!members) {
-            console.error(`[Huanaiyka_TempParty] 未找到预设ID: ${presetId}，可用的预设: ${Array.from(presets.keys()).join(', ')}`);
             return false;
         }
         return switchToTempParty(members, variableId);
     }
 
-    /**
-     * 恢复之前存储的队伍
-     * @param {number} variableId 存储原队伍的变量ID
-     * @returns {boolean} 是否成功
-     */
-    function restoreParty(variableId) {
-        const stored = $gameVariables.value(variableId);
-        if (!Array.isArray(stored)) {
-            console.warn(`[Huanaiyka_TempParty] 变量 ${variableId} 的值不是有效数组，无法恢复队伍。`, stored);
+    function saveAndSwitchTopN(count = 1, variableId) {
+        const n = Math.max(1, Number(count) || 1);
+        const currentMembers = $gameParty._actors.slice();
+        if (currentMembers.length === 0) {
             return false;
         }
-        if (stored.length === 0) {
-            console.warn(`[Huanaiyka_TempParty] 存储的队伍为空，将清空当前队伍。`);
+        const topNMembers = currentMembers.slice(0, n);
+        return switchToTempParty(topNMembers, variableId);
+    }
+
+    function restoreParty(variableId) {
+        const validVarId = getValidVariableId(variableId);
+        const stored = $gameVariables.value(validVarId);
+        if (!Array.isArray(stored)) {
+            return false;
         }
-        // 清空当前队伍
         clearParty();
-        // 恢复原队伍
         addActorsToParty(stored);
-        console.log(`[Huanaiyka_TempParty] 已从变量 ${variableId} 恢复队伍：`, stored);
         return true;
+    }
+
+    // ============================================================================
+    // 组合功能
+    // ============================================================================
+
+    function saveAll(memberIds, itemTypes, partyVarId, itemVarId) {
+        let tempMembers;
+        if (!memberIds || memberIds.trim() === '') {
+            tempMembers = defaultTempMembers.slice();
+        } else {
+            tempMembers = memberIds.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
+        }
+        
+        if (tempMembers.length === 0) {
+            return false;
+        }
+        
+        const validPartyVarId = getValidVariableId(partyVarId);
+        const validItemVarId = getValidItemVariableId(itemVarId);
+        const types = parseItemTypes(itemTypes);
+        
+        const partySuccess = switchToTempParty(tempMembers, validPartyVarId);
+        const itemSuccess = storeAndClearItems(types, validItemVarId);
+        
+        return partySuccess && itemSuccess;
+    }
+
+    function restoreAll(partyVarId, itemVarId, keepCurrentItems = false) {
+        const validPartyVarId = getValidVariableId(partyVarId);
+        const validItemVarId = getValidItemVariableId(itemVarId);
+        
+        const itemSuccess = restoreItems(validItemVarId, keepCurrentItems);
+        const partySuccess = restoreParty(validPartyVarId);
+        
+        return partySuccess && itemSuccess;
     }
 
     // ============================================================================
     // 注册插件指令
     // ============================================================================
 
-    // 1. 存储并切换临时队伍指令（自定义成员）
     PluginManager.registerCommand('Huanaiyka_TempParty', 'SaveAndSwitch', args => {
         let memberIdsArg = args.memberIds ? args.memberIds.trim() : '';
-        let variableIdArg = args.variableId ? Number(args.variableId) : defaultVariableId;
+        let variableIdArg = getValidVariableId(args.variableId);
 
         let tempMembers;
         if (memberIdsArg === '') {
-            tempMembers = defaultTempMembers.slice(); // 使用默认
+            tempMembers = defaultTempMembers.slice();
         } else {
             tempMembers = memberIdsArg.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
         }
 
-        if (tempMembers.length === 0) {
-            console.error('[Huanaiyka_TempParty] 插件指令 SaveAndSwitch 未提供有效的临时成员ID列表，操作取消。');
-            return;
-        }
+        if (tempMembers.length === 0) return;
 
         switchToTempParty(tempMembers, variableIdArg);
     });
 
-    // 2. 存储并切换临时队伍指令（使用预设）
     PluginManager.registerCommand('Huanaiyka_TempParty', 'SaveAndSwitchPreset', args => {
         const presetId = args.presetId ? args.presetId.trim() : '';
-        const variableIdArg = args.variableId ? Number(args.variableId) : defaultVariableId;
+        const variableIdArg = getValidVariableId(args.variableId);
 
-        if (!presetId) {
-            console.error('[Huanaiyka_TempParty] 插件指令 SaveAndSwitchPreset 缺少 presetId 参数，操作取消。');
-            return;
-        }
+        if (!presetId) return;
 
         switchToTempPartyByPreset(presetId, variableIdArg);
     });
 
-    // 3. 恢复原队伍指令
+    PluginManager.registerCommand('Huanaiyka_TempParty', 'SaveAndSwitchTopN', args => {
+        const count = args.count ? Number(args.count) : 1;
+        const variableIdArg = getValidVariableId(args.variableId);
+
+        saveAndSwitchTopN(count, variableIdArg);
+    });
+
     PluginManager.registerCommand('Huanaiyka_TempParty', 'Restore', args => {
-        let variableIdArg = args.variableId ? Number(args.variableId) : defaultVariableId;
+        let variableIdArg = getValidVariableId(args.variableId);
         restoreParty(variableIdArg);
     });
 
-    // 为了兼容手动调用，暴露全局方法（可选）
+    PluginManager.registerCommand('Huanaiyka_TempParty', 'StoreAndClearItems', args => {
+        const itemTypes = args.itemTypes ? args.itemTypes.trim() : '';
+        const variableIdArg = getValidItemVariableId(args.variableId);
+        
+        storeAndClearItems(itemTypes, variableIdArg);
+    });
+
+    PluginManager.registerCommand('Huanaiyka_TempParty', 'RestoreItems', args => {
+        const variableIdArg = getValidItemVariableId(args.variableId);
+        const keepCurrentItems = args.keepCurrentItems === 'true';
+        
+        restoreItems(variableIdArg, keepCurrentItems);
+    });
+
+    PluginManager.registerCommand('Huanaiyka_TempParty', 'SaveAll', args => {
+        const memberIds = args.memberIds ? args.memberIds.trim() : '';
+        const itemTypes = args.itemTypes ? args.itemTypes.trim() : '';
+        const partyVarId = args.partyVarId ? args.partyVarId : 0;
+        const itemVarId = args.itemVarId ? args.itemVarId : 0;
+        
+        saveAll(memberIds, itemTypes, partyVarId, itemVarId);
+    });
+
+    PluginManager.registerCommand('Huanaiyka_TempParty', 'RestoreAll', args => {
+        const partyVarId = args.partyVarId ? args.partyVarId : 0;
+        const itemVarId = args.itemVarId ? args.itemVarId : 0;
+        const keepCurrentItems = args.keepCurrentItems === 'true';
+        
+        restoreAll(partyVarId, itemVarId, keepCurrentItems);
+    });
+
+    // ============================================================================
+    // 暴露全局 API
+    // ============================================================================
+
     window.Huanaiyka_TempParty = {
         storeParty,
         restoreParty,
         switchToTempParty,
         switchToTempPartyByPreset,
-        presets
+        saveAndSwitchTopN,
+        presets,
+        storeItems,
+        restoreItems,
+        clearItems,
+        storeAndClearItems,
+        saveAll,
+        restoreAll,
+        parseItemTypes,
+        getValidVariableId,
+        getValidItemVariableId
     };
-
-    console.log(`[Huanaiyka_TempParty] 插件已加载。
-    默认存储变量ID = ${defaultVariableId}
-    默认临时成员 = ${defaultTempMembersStr}
-    预设数量 = ${presets.size}`);
 })();

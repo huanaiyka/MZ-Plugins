@@ -1,4 +1,3 @@
-
 /*:
  * @target MV MZ
  * @plugindesc 限制玩家只能站在允许的区域ID上
@@ -8,7 +7,7 @@
  * ============================================================================
  * 简介
  * ============================================================================
- * 本插件使用地图的“区域ID”（Region ID，编辑器中区域层涂抹的数字）。
+ * 本插件使用地图的"区域ID"（Region ID，编辑器中区域层涂抹的数字）。
  * 定义一个开关和一组允许移动的区域ID。
  * 当开关开启时，玩家只能移动到目标格子的区域ID在允许列表中的位置。
  * 如果当前站立位置的区域ID被禁止，则无法开始任何移动。
@@ -277,9 +276,9 @@
                 $gameSystem.resetRegionMoveAllowed();
                 break;
             default:
-                console.warn(`RegionMove: 未知命令 ${sub}`);
+                // 未知命令，静默忽略
+                break;
         }
     };
 
-    console.log(`${pluginName} 已加载。开关ID: ${masterSwitchId}, 允许区域: ${regionArrayToString(defaultAllowedRegions)}`);
 })();

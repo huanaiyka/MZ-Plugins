@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc 制作对自身造成反伤的技能。
+ * @plugindesc 制作对自身造成反伤的技能
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help
@@ -9,7 +9,7 @@
  * ============================================================================
  * 本插件可用于制作命中敌人后，对使用者自身造成反伤的技能。
  * 
-============================================================================
+ * ============================================================================
  * 技能备注标签
  * ============================================================================
  * 1. 固定数值反伤
@@ -28,21 +28,13 @@
  * 4. 无视防御（可选，默认跟随全局参数）
  *    <SelfDamageIgnoreDefense: true>
  *    <SelfDamageIgnoreDefense: false>
- *    设为 true 时，计算出的反伤值将无视使用者防御力，直接扣除；
- *    设为 false 时，反伤值会受到使用者防御力的减免
- *    （减免公式：最终伤害 = 原伤害 * 100 / (100 + 防御)）。
  *
  * ============================================================================
- * 注意事项
+ * 参数说明
  * ============================================================================
- * 1. 当「允许自伤致死」为 true 时，反伤可能使使用者死亡，会正常触发死亡动画并结算战斗。
- * 2. 当「允许自伤致死」为 false 时，反伤会被限制为 (当前 HP - 1)，确保使用者存活。
- * 3. 公式模式下若公式语法错误（如除以 0），会自动返回 0，不会导致游戏崩溃。
- *
- *
  * @param delayMs
  * @text 自伤延迟毫秒数
- * @desc 自伤相对于敌人受伤的延迟时间（毫秒），默认 300。
+ * @desc 自伤相对于敌人受伤的延迟时间（毫秒）。默认 300。
  * @type number
  * @default 300
  *
@@ -64,6 +56,9 @@
     const DELAY_MS = parseInt(parameters['delayMs'] || '300', 10);
     const DEFAULT_IGNORE_DEFENSE = String(parameters['defaultIgnoreDefense'] || 'true') === 'true';
     const ALLOW_DEATH = String(parameters['allowDeath'] || 'true') === 'true';
+
+    // 用于管理战斗中的延迟自伤队列
+    let selfDamageQueue = [];
 
     function parseConfig(skill) {
         if (!skill) return null;
@@ -115,7 +110,6 @@
                 dmg = damageDealt * config.value;
             } else if (config.type === 'formula') {
                 const a = user;
-                const damageDealt = damageDealt;
                 dmg = eval(config.value);
             }
         } catch(e) {
@@ -132,43 +126,85 @@
             final = Math.floor(damage * 100 / (100 + def));
             final = Math.max(1, final);
         }
-        // 根据是否允许死亡决定是否限制最小剩余 HP
+
         if (!ALLOW_DEATH) {
             final = Math.min(final, user.hp - 1);
         }
-        // 若允许死亡，不需要限制（gainHp 会自动截断到 0）
+
         user.gainHp(-final);
-        if (user.startDamagePopup) user.startDamagePopup(final, false);
+        if (user.startDamagePopup) user.startDamagePopup();
         if (user.performDamage) user.performDamage();
-        if (user.isDead() && !user.isPreserved()) {
+
+        // 倒下动画处理（已修复 isPreserved 报错）
+        if (user.isDead()) {
             user.performCollapse();
-            BattleManager.checkBattleEnd();
         }
         if (user.refresh) user.refresh();
     }
 
-    const _makeDamageValue = Game_Action.prototype.makeDamageValue;
-    Game_Action.prototype.makeDamageValue = function(target, critical) {
-        const baseDamage = _makeDamageValue.call(this, target, critical);
-        if (baseDamage > 0 && this.item() && DataManager.isSkill(this.item())) {
+    // 1. 技能命中时，将自伤任务按照配置的 delayMs 推进队列
+    const _Game_Action_apply = Game_Action.prototype.apply;
+    Game_Action.prototype.apply = function(target) {
+        _Game_Action_apply.call(this, target);
+
+        const result = target.result();
+        if (result.isHit() && result.hpDamage > 0 && this.item() && DataManager.isSkill(this.item())) {
             const skill = this.item();
             const config = parseConfig(skill);
             if (config && config.enabled) {
                 const user = this.subject();
                 if (user && user.isAlive()) {
-                    const selfDmg = calcDamage(user, baseDamage, config);
+                    const selfDmg = calcDamage(user, result.hpDamage, config);
                     if (selfDmg > 0) {
-                        setTimeout(() => applySelfDamage(user, selfDmg, config.ignoreDefense), DELAY_MS);
+                        selfDamageQueue.push({
+                            user: user,
+                            damage: selfDmg,
+                            ignoreDefense: config.ignoreDefense,
+                            triggerTime: Date.now() + DELAY_MS
+                        });
                     }
                 }
             }
         }
-        return baseDamage;
     };
 
-    if (!DataManager.isSkill) {
-        DataManager.isSkill = function(item) {
-            return item && item.skillId !== undefined;
-        };
-    }
+    // 2. 挂载到主逻辑帧更新中安全结算自伤
+    const _BattleManager_update = BattleManager.update;
+    BattleManager.update = function(timeActive) {
+        _BattleManager_update.call(this, timeActive);
+
+        if (selfDamageQueue.length > 0) {
+            const now = Date.now();
+            for (let i = selfDamageQueue.length - 1; i >= 0; i--) {
+                const item = selfDamageQueue[i];
+                if (now >= item.triggerTime) {
+                    applySelfDamage(item.user, item.damage, item.ignoreDefense);
+                    selfDamageQueue.splice(i, 1);
+                }
+            }
+        }
+    };
+
+    // 3. 胜利逻辑判定修复：优先判定敌方死亡
+    BattleManager.checkBattleEnd = function() {
+        if (this.isBattleEnd()) {
+            return true;
+        }
+        if ($gameTroop.isAllDead()) {
+            this.processVictory();
+            return true;
+        }
+        if ($gameParty.isAllDead()) {
+            this.processDefeat();
+            return true;
+        }
+        return false;
+    };
+
+    // 战斗开始时初始化队列
+    const _BattleManager_setup = BattleManager.setup;
+    BattleManager.setup = function(troopId, canEscape, canLose) {
+        _BattleManager_setup.call(this, troopId, canEscape, canLose);
+        selfDamageQueue = [];
+    };
 })();

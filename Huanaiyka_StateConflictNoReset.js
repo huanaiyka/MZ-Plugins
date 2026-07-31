@@ -53,34 +53,39 @@
  * 
  */
 
-var ZTT = ZTT || {};
-ZTT.StatesEx = ZTT.StatesEx || {};
+var Huanaiyka = Huanaiyka || {};
+Huanaiyka.StatesEx = Huanaiyka.StatesEx || {};
 
 (() => {
+    'use strict';
+
     //=========================================================================
-    // 读取备注标签
+    // 读取与缓存备注标签
     //=========================================================================
     
     /**
-     * 获取状态的互斥组列表
+     * 获取状态的互斥组列表（包含缓存机制以提升运行性能）
      * @param {number} stateId - 状态ID
      * @returns {string[]} 互斥组名称数组
      */
     function getExclusiveGroups(stateId) {
         const state = $dataStates[stateId];
-        if (!state || !state.note) return [];
+        if (!state) return [];
         
-        const groups = [];
-        const lines = state.note.split(/\r?\n/);
-        const regex = /<ExclusiveGroup:\s*([^>]+)>/i;
-        
-        for (const line of lines) {
-            const match = line.match(regex);
-            if (match) {
-                groups.push(match[1].trim());
+        if (state._exclusiveGroups === undefined) {
+            state._exclusiveGroups = [];
+            if (state.note) {
+                const lines = state.note.split(/\r?\n/);
+                const regex = /<ExclusiveGroup:\s*([^>]+)>/i;
+                for (const line of lines) {
+                    const match = line.match(regex);
+                    if (match) {
+                        state._exclusiveGroups.push(match[1].trim());
+                    }
+                }
             }
         }
-        return groups;
+        return state._exclusiveGroups;
     }
     
     /**
@@ -90,10 +95,16 @@ ZTT.StatesEx = ZTT.StatesEx || {};
      */
     function isNoResetTurns(stateId) {
         const state = $dataStates[stateId];
-        if (!state || !state.note) return false;
+        if (!state) return false;
         
-        const regex = /<NoResetTurns>/i;
-        return regex.test(state.note);
+        if (state._noResetTurns === undefined) {
+            if (state.note) {
+                state._noResetTurns = /<NoResetTurns>/i.test(state.note);
+            } else {
+                state._noResetTurns = false;
+            }
+        }
+        return state._noResetTurns;
     }
     
     /**
@@ -142,10 +153,5 @@ ZTT.StatesEx = ZTT.StatesEx || {};
         // 调用原始方法
         _Game_Battler_addState.call(this, stateId);
     };
-    
-    //=========================================================================
-    // 控制台输出确认插件已加载
-    //=========================================================================
-    
-    console.log("ZTT_StatesEx 插件已加载！");
+
 })();

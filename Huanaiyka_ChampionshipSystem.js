@@ -1,7 +1,7 @@
 /*:
  * @target MZ
- * @plugindesc 擂台赛模拟器 v2.7.3 (支持一键决出冠军播报自定义，支持胜率超100% & 必出敌群)
- * @author 幻爱 & Gemini
+ * @plugindesc 擂台赛模拟器
+ * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help
  * ============================================================================
@@ -11,23 +11,20 @@
  * 1. 从预设敌群池中按出现概率抽取指定数量作为对手。
  * 2. 每轮玩家随机与一组敌群战斗，其余敌群按基础胜率与克制关系模拟内部淘汰。
  * 3. 最终决出冠军，玩家与冠军敌群对战。
- * 4. 【极简战败处理】若玩家在中途战败，只需调用“一键决出总冠军”指令，
- *    系统将自动完成剩余模拟，合并输出所有战报，并直接返回最终冠军 ID！
- * 
- * ============================================================================
- * 极简事件流程（战败一键处理）
+ * 4. 若玩家在中途战败，只需调用“一键决出总冠军”指令，
+ *    系统将自动完成剩余模拟，合并输出所有战报，并直接返回最终冠军 ID。
+ * *============================================================================
+ * 推荐事件流程（先战后报）
  * ----------------------------------------------------------------------------
- * 1. 玩家战斗处理（敌群 \V[1]）
- * 2. 胜利分支：
- *      - 插件指令：擂台赛显示战报
- *      - 插件指令：擂台赛下一轮
- * 3. 失败分支（一键极简！）：
- *      - 插件指令：一键决出总冠军
- *      - 显示文字：“最终的冠军得主是：\N[\V[1]]！”（变量 1 自动变更为冠军ID）
+ * 1. 插件指令：擂台赛开始 15
+ * 2. 插件指令：擂台赛下一轮 (此时仅锁定当前对手，不进行其余人模拟)
+ * 3. 循环
+ *      擂台赛获取对手 → 战斗处理：敌群 \V[1]
+ *      胜利后 → 擂台赛显示战报 (此时会先自动模拟其余人对战，并完整显示战报)
+ *      擂台赛下一轮
+ *      擂台赛是否决赛 → 若决赛则跳出循环
+ * 4. 最终战斗(决赛) → 结束
  * 
- * ============================================================================
- * 插件指令
- * ============================================================================
  * @command startArena
  * @text 擂台赛开始
  * @desc 开始新一届擂台赛，抽取敌群。
@@ -51,6 +48,15 @@
  * @command getOpponent
  * @text 擂台赛获取对手
  * @desc 将当前需要挑战的敌群ID或最终存活的冠军NPC ID存入指定变量。
+ * @arg type
+ * @text 获取类型
+ * @type select
+ * @option ID (数字)
+ * @value id
+ * @option 名称 (字符串)
+ * @value name
+ * @default id
+ * @desc 选择获取对手的ID还是名称。
  * 
  * @command getRound
  * @text 擂台赛获取轮次
@@ -96,36 +102,42 @@
  * @type number
  * @min 1
  * @default 15
+ * @desc 每次擂台赛默认抽取的敌群数量（不含玩家）。可通过插件指令参数覆盖。
  * 
  * @param playerSymbolId
  * @text 玩家标志ID
  * @parent divider_core
  * @type number
  * @default 0
+ * @desc 用于在参赛列表中代表玩家的特殊ID值。请勿与其他敌群ID冲突。
  * 
  * @param opponentVarId
  * @text 对手ID变量
  * @parent divider_core
  * @type variable
  * @default 1
+ * @desc 存储当前玩家需要挑战的对手ID的RMMZ变量编号。
  * 
  * @param finalFlagVarId
  * @text 决赛标志变量
  * @parent divider_core
  * @type variable
  * @default 2
+ * @desc 存储决赛状态标志的RMMZ变量编号（1=决赛，0=非决赛）。
  * 
  * @param roundVarId
  * @text 当前轮次变量
  * @parent divider_core
  * @type variable
  * @default 3
+ * @desc 存储当前比赛已进行轮数的RMMZ变量编号。
  * 
  * @param battleFirstMode
  * @text 先战后报模式
  * @parent divider_core
  * @type boolean
  * @default false
+ * @desc 开启后，每轮只锁定对手不立即模拟其他NPC，战报将在显示时统一生成。适合先战斗后看战报的流程。
  * 
  * @param divider_switch
  * @text ====战报显示开关====
@@ -135,24 +147,28 @@
  * @parent divider_switch
  * @type boolean
  * @default false
+ * @desc 开启后，每轮模拟结束会自动弹出战报消息，无需手动调用"显示战报"指令。启用“先战后报”时不建议开启。
  * 
  * @param showWinRate
  * @text 显示概率与括号
  * @parent divider_switch
  * @type boolean
  * @default false
+ * @desc 在对战结果后显示括号内的胜率百分比，例如「哈罗德 获胜 (65%)」。
  * 
  * @param showMatchupLabel
  * @text 显示克制标签
  * @parent divider_switch
  * @type boolean
  * @default false
+ * @desc 当存在克制关系时，在获胜者名称前显示【克制】或【被克制】标签。
  * 
  * @param showOpponentInReport
  * @text 战报中提示当前对手
  * @parent divider_switch
  * @type boolean
  * @default true
+* @desc 在战报末尾追加一行提示，告知玩家本轮需要挑战的对手是谁。启用“先战后报”不建议开启。
  * 
  * @param divider_smart_calc
  * @text ====克制与胜率计算基准====
@@ -161,6 +177,7 @@
  * @text 克制覆盖基础胜率
  * @type boolean
  * @default true
+* @desc 开启后，若存在克制关系则直接使用克制设定的胜率覆盖双方基础胜率。关闭则改为在基础胜率上加减修正值。
  * 
  * @param winRateDisplayType
  * @text 胜率显示基准
@@ -170,6 +187,7 @@
  * @option 左侧选手A (Left)
  * @value Left
  * @default Winner
+* @desc 在战报中显示的胜率百分比以哪一方为基准：获胜者的胜率（Winner）或固定显示左侧选手的胜率（Left）。
  * 
  * @param divider_template
  * @text ====战报文本模板====
@@ -179,44 +197,63 @@
  * @parent divider_template
  * @type string
  * @default 第 %1 轮开始！
+ * @desc 常规轮次战报开始时的标题行。%1 将被替换为当前轮次数。
  * 
  * @param reportFinalHeaderFormat
  * @text 决赛战报首段文本模板
  * @parent divider_template
  * @type string
  * @default 最终决战开始！
+ * @desc 决赛轮战报开始时的标题行。%1 将被替换为当前轮次数。
  * 
  * @param battleFormat
  * @text 战报对战文本模板
  * @parent divider_template
  * @type string
  * @default %1 VS %2 -> %3 获胜 %4%5
+ * @desc 单场对战的战报格式。%1=左侧选手名，%2=右侧选手名，%3=获胜者名，%4=克制标签，%5=胜率百分比。
  * 
  * @param byeFormat
  * @text 战报轮空文本模板
  * @parent divider_template
  * @type string
  * @default %1 轮空，直接晋级。
+ * @desc 当某选手因对手数为奇数而轮空时的显示文本。%1 将被替换为轮空选手名。
+ * 
+ * @param showAutoFinishHeader
+ * @text 显示一键冠军首段
+ * @parent divider_template
+ * @type boolean
+ * @default true
+ * @desc 是否显示一键决出总冠军后的首段文字。
+ * 
+ * @param showAutoFinishWinner
+ * @text 显示一键冠军获胜者
+ * @parent divider_template
+ * @type boolean
+ * @default true
+ * @desc 是否显示一键决出总冠军后的获胜者名单。
  * 
  * @param opponentFormat
  * @text 战报揭晓对手文本模板
  * @parent divider_template
  * @type string
  * @default 【提示】本轮你的对手是: %1
+ * @desc 在战报末尾提示玩家当前对手的文本格式。%1 将被替换为对手名称。
  * 
  * @param autoFinishHeaderFormat
  * @text 一键冠军首段文本模板
  * @parent divider_template
  * @type string
  * @default 【最终播报】大会已决出最终总冠军！
- * @desc 玩家战败一键决出总冠军后，最底下合并播报的首段文字。
+ * @desc 玩家战败一键决出总冠军后，合并播报时显示的首段文字。
  * 
  * @param autoFinishWinnerFormat
  * @text 一键冠军获胜文本模板
  * @parent divider_template
  * @type string
  * @default 恭喜选手「%1」夺得桂冠！
- * @desc 一键决出总冠军后宣布获胜者的文字。%1 将自动替换为最终冠军的名称。
+ * @desc 一键决出总冠军后宣布获胜者的文字。%1 将被替换为最终冠军的名称。
  * 
  * @param divider_data
  * @text ====参赛成员与关系====
@@ -226,51 +263,60 @@
  * @parent divider_data
  * @type struct<Troop>[]
  * @default []
+ * @desc 定义所有可参赛的敌群，每个敌群需填写ID、自定义名称、基础胜率和出现权重。
  * 
  * @param matchups
  * @text 克制关系
  * @parent divider_data
  * @type struct<Matchup>[]
  * @default []
+ * @desc 定义敌群之间的克制关系列表，可指定攻击方、防御方和克制胜率。
  */
 
 /*~struct~Troop:
  * @param id
  * @text 敌群ID
  * @type troop
+ * @desc 对应RMMZ数据库中的敌群ID。
  * 
  * @param name
  * @text 自定义名称
  * @type string
+ * @desc 在战报中显示的敌群名称，留空则使用数据库中的名称。
  * 
  * @param winRate
  * @text 基础胜率/战斗指数
  * @type number
  * @min 0
  * @default 50
+ * @desc 该敌群的基础胜率，数值越高越强。在模拟对决中作为胜率计算的基准值。
  * 
  * @param spawnWeight
  * @text 出现权重
  * @type number
  * @decimals 4
- * @min 0.0001
+ * @min 0.01
  * @default 10
+ * @desc 该敌群在擂台赛开赛时被抽选为参赛者的相对权重。数值越大，被抽中的概率越高。
  */
 
 /*~struct~Matchup:
  * @param attackerName
  * @text 攻击方(克制方)名称
  * @type string
+ * @desc 拥有克制优势的一方敌群名称（需与敌群列表中定义的自定义名称完全匹配）。
  * 
  * @param defenderName
  * @text 防御方(被克方)名称
  * @type string
+ * @desc 处于劣势、被克制的一方敌群名称（需与敌群列表中定义的自定义名称完全匹配）。
  * 
  * @param winRate
  * @text 克制胜率/指数
  * @type number
  * @min 0
  * @default 80
+ * @desc 当攻击方对阵防御方时，攻击方的胜率。会根据"克制覆盖基础胜率"设置决定如何参与计算。
  */
 
 (function() {
@@ -284,6 +330,9 @@
     const BATTLE_FIRST_MODE = parameters['battleFirstMode'] === 'true';
     const SHOW_AUTO_REPORT = parameters['showAutoReport'] === 'true';
     
+    const SHOW_AUTO_FINISH_HEADER = parameters['showAutoFinishHeader'] === 'true';
+    const SHOW_AUTO_FINISH_WINNER = parameters['showAutoFinishWinner'] === 'true';
+
     const SHOW_WIN_RATE = parameters['showWinRate'] === 'true';
     const SHOW_MATCHUP_LABEL = parameters['showMatchupLabel'] === 'true';
     const SHOW_OPPONENT_IN_REPORT = parameters['showOpponentInReport'] === 'true';
@@ -296,7 +345,7 @@
     const BATTLE_FORMAT = String(parameters['battleFormat'] || "%1 VS %2 -> %3 获胜 %4%5");
     const BYE_FORMAT = String(parameters['byeFormat'] || "%1 轮空，直接晋级。");
     const OPPONENT_FORMAT = String(parameters['opponentFormat'] || "【提示】本轮你的对手是: %1");
-    
+
     // 新增：一键决出冠军自定义文本
     const AUTO_FINISH_HEADER_FORMAT = String(parameters['autoFinishHeaderFormat'] || "【最终播报】大会已决出最终总冠军！");
     const AUTO_FINISH_WINNER_FORMAT = String(parameters['autoFinishWinnerFormat'] || "恭喜选手「%1」夺得桂冠！");
@@ -653,23 +702,26 @@ function autoFinishTournament(interpreter) {
         }
 
         // 7. 保存最终状态
-        state.isFinal = true;
+state.isFinal = true;
         $gameVariables.setValue(ROUND_VAR_ID, currentRound);
         $gameVariables.setValue(FINAL_FLAG_VAR_ID, 1);
         const finalWinner = participants[0];
         $gameVariables.setValue(OPPONENT_VAR_ID, finalWinner);
 
+        // 使用刚才在第1步定义的开关进行判断
+        const footerLines = [];
+        if (SHOW_AUTO_FINISH_HEADER) footerLines.push(AUTO_FINISH_HEADER_FORMAT);
+        if (SHOW_AUTO_FINISH_WINNER) footerLines.push(AUTO_FINISH_WINNER_FORMAT.replace('%1', getTroopName(finalWinner)));
+
         state.reportCache = {
             header: [],
             middle: combinedMiddle,
-            footer: [
-                AUTO_FINISH_HEADER_FORMAT,
-                AUTO_FINISH_WINNER_FORMAT.replace('%1', getTroopName(finalWinner))
-            ]
+            footer: footerLines
         };
 
         showReportAndAwait(interpreter);
     }
+
     function advanceToNextRound(interpreter) {
         const state = getState();
         let participants = state.participants;
@@ -817,13 +869,22 @@ function autoFinishTournament(interpreter) {
         }
     }
     
-    function getCurrentOpponent() {
-        const state = getState();
-        if (!state.participants.includes(PLAYER_SYMBOL)) {
-            return state.participants[0] || -1;
-        }
-        return state.currentOpponent || -1;
+function getCurrentOpponent(returnType) {
+    const state = getState();
+    let id = -1;
+    
+    if (!state.participants.includes(PLAYER_SYMBOL)) {
+        id = state.participants[0] || -1;
+    } else {
+        id = state.currentOpponent || -1;
     }
+    
+    // 如果 returnType 是 'name'，返回名称；否则返回 ID
+    if (returnType === 'name') {
+        return id === -1 ? '无对手' : getTroopName(id);
+    }
+    return id;
+}
     
     function isFinalRound() {
         const state = getState();
@@ -870,9 +931,11 @@ function autoFinishTournament(interpreter) {
         $gameVariables.setValue(FINAL_FLAG_VAR_ID, isFinalRound());
     });
     
-    PluginManager.registerCommand(pluginName, 'getOpponent', () => {
-        $gameVariables.setValue(OPPONENT_VAR_ID, getCurrentOpponent());
-    });
+PluginManager.registerCommand(pluginName, 'getOpponent', args => {
+    const returnType = args.type || 'id';
+    const result = getCurrentOpponent(returnType);
+    $gameVariables.setValue(OPPONENT_VAR_ID, result);
+});
 
     PluginManager.registerCommand(pluginName, 'getRound', () => {
         $gameVariables.setValue(ROUND_VAR_ID, getRoundCount());
@@ -921,10 +984,13 @@ function autoFinishTournament(interpreter) {
             $gameVariables.setValue(FINAL_FLAG_VAR_ID, isFinalRound());
             return;
         }
-        if (command === '擂台赛获取对手') {
-            $gameVariables.setValue(OPPONENT_VAR_ID, getCurrentOpponent());
-            return;
-        }
+if (command === '擂台赛获取对手') {
+    // 检查第二个参数：如果包含 'name' 或 '名字' 则返回名称
+    const returnType = (args.length > 0 && (args[0] === 'name' || args[0] === '名字')) ? 'name' : 'id';
+    const result = getCurrentOpponent(returnType);
+    $gameVariables.setValue(OPPONENT_VAR_ID, result);
+    return;
+}
         if (command === '擂台赛获取轮次') {
             $gameVariables.setValue(ROUND_VAR_ID, getRoundCount());
             return;

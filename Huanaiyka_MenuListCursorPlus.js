@@ -165,8 +165,11 @@
     };
     
     const globalFastMoveEnable = getBooleanParam('enableFastMove', true);
-    const longPressDelay = parseFloat(params['longPressDelay'] || 0.3);
-    const fastMoveInterval = parseInt(params['fastMoveInterval'] || 1, 10);
+// 确保长按延迟至少为 0.1 秒，默认 1 秒
+const longPressDelay = Math.max(0.1, parseFloat(params['longPressDelay'] || 1));
+
+// 确保移动间隔至少为 1 帧，默认 8 帧
+const fastMoveInterval = Math.max(1, parseInt(params['fastMoveInterval'] || 8, 10));
     
     const fastMoveSwitches = {
         Window_ItemList:      getBooleanParam('fastMoveItemList', true),

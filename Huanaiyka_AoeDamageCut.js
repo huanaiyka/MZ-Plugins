@@ -27,7 +27,7 @@
  * ============================================================================
  * @param reducePercent
  * @text 削减百分比
- * @desc 全体攻击的伤害减少百分之多少（0~100）。例如 30 表示减少30%伤害。
+ * @desc 全体攻击的伤害减少百分之多少（0~100）。例如 20 表示减少20%伤害。
  * @type number
  * @min 0
  * @max 100
@@ -48,7 +48,7 @@
  */
 
 (() => {
-    const parameters = PluginManager.parameters('全体攻击伤害削减');
+    const parameters = PluginManager.parameters('Huanaiyka_AoeDamageCut');
     const reducePercent = Number(parameters['reducePercent'] || 30);
     const scopesString = parameters['targetScopes'] || '2';
     const targetScopes = scopesString.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));

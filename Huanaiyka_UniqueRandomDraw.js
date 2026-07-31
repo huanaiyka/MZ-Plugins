@@ -17,7 +17,7 @@
  * DrawUniqueNumberStrict 池子 变量ID → 抽完返回 0，需手动重置
  * ResetPool                          → 重置所有池（无需参数）
  *
- * 池子写法：英文逗号分隔，例如 "10,20,30" 或 "苹果,香蕉,橙子"。
+ * 池子写法：英文逗号分隔，例如 "10,20,30" 或 "药水,铁剑,金币"。
  *
  * ============================================================
  * 脚本调用
@@ -57,7 +57,7 @@
  * @desc 抽完自动重置
  * @arg poolString
  * @text 池子
- * @desc 英文逗号分隔，如 "10,20,30" 或 "苹果,香蕉,橙子"。留空则使用默认池子。
+ * @desc 支持逗号分隔，如 "10,20,30"、"药水,铁剑,金币"或范围格式（如 "1~10"）。留空则使用默认池子。
  * @type string
  * @default
  * @arg variable
@@ -70,7 +70,7 @@
  * @desc 抽完返回0，需手动重置
  * @arg poolString
  * @text 池子
- * @desc 英文逗号分隔，如 "10,20,30" 或 "苹果,香蕉,橙子"。留空则使用默认池子。
+ * @desc 支持逗号分隔，如 "10,20,30"、"药水,铁剑,金币"或范围格式（如 "1~10"）。留空则使用默认池子。
  * @type string
  * @default
  * @arg variable
@@ -136,8 +136,24 @@
         return true;
     }
 
-    function parsePoolString(str) {
+function parsePoolString(str) {
         if (!str || str.trim() === '') return null;
+        
+        // --- 新增：识别 1~10 格式 ---
+        if (str.includes('~')) {
+            const range = str.split('~').map(Number);
+            if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+                const start = Math.min(range[0], range[1]);
+                const end = Math.max(range[0], range[1]);
+                const result = [];
+                for (let i = start; i <= end; i++) {
+                    result.push(i);
+                }
+                return result;
+            }
+        }
+        // --------------------------
+
         const parts = str.split(',').map(s => s.trim());
         const result = [];
         for (let part of parts) {

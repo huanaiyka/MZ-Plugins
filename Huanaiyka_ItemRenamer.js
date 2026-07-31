@@ -1,250 +1,268 @@
 /*:
  * @target MZ
- * @plugindesc 永久更改道具/武器/防具的名称和说明文，保存至存档
+ * @plugindesc 永久更改道具/武器/防具的名称和说明文，直接修改数据库，保存至存档
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help
  * ██████ 功能概述 ██████
- * 这个插件允许你在游戏中永久修改物品、武器、防具的「名称」和「说明文」。
- * 修改后的内容会保存在存档中，读档后依然有效，且所有显示位置（菜单、商店、图鉴、帮助窗口等）都会自动更新。
+ * 本插件直接修改内存中的数据库条目，所有窗口自动显示修改后的名称和说明。
+ * 修改记录保存在存档中，读档后自动恢复。
  *
  * ██████ 插件命令 ██████
- * ─── 修改名称 ───
- *   RenameItem   itemId 新名称      // 修改物品名称
- *   RenameWeapon weaponId 新名称     // 修改武器名称
- *   RenameArmor  armorId 新名称      // 修改防具名称
+ *   RenameItem   itemId 新名称
+ *   RenameWeapon weaponId 新名称
+ *   RenameArmor  armorId 新名称
+ *   RenameItemDesc   itemId 新说明
+ *   RenameWeaponDesc weaponId 新说明
+ *   RenameArmorDesc  armorId 新说明
  *
- * ─── 修改说明文 ───
- *   RenameItemDesc   itemId 新说明文   // 修改物品说明
- *   RenameWeaponDesc weaponId 新说明文  // 修改武器说明
- *   RenameArmorDesc  armorId 新说明文   // 修改防具说明
+ * ██████ 换行说明 ██████
+ * 在说明中使用 \n 换行，例如：
+ *   RenameItemDesc 5 "第一行\n第二行\n第三行"
+ * 注意：必须用英文双引号括起来，且 \n 为反斜杠加 n。
  *
- * ██████ 使用示例 ██████
- *   RenameItem 5 勇者之剑              // 将5号物品改名为“勇者之剑”
- *   RenameItemDesc 5 一把传说中的圣剑    // 将5号物品的说明改为“一把传说中的圣剑”
- *   RenameWeapon 3 "传说之弓"           // 武器名带空格时需要用英文引号括起来
- *   RenameArmorDesc 1 "龙鳞制成的铠甲，防御力极高"
+ * ██████ 清除修改 ██████
+ * 传入空字符串（带引号）可恢复原始内容：
+ *   RenameItem 5 ""
+ *   RenameItemDesc 5 ""
  *
- * ██████ 注意事项（非常重要！） ██████
- * 1. 如果新名称或新说明文中包含空格，必须用英文双引号括起来，例如：
- *       RenameItem 5 "传说中的 圣剑"
- *    否则插件会错误解析参数，导致改名失败或只取空格前的部分。
- * 2. 修改的内容保存在存档中，因此：
- *       ✓ 读档后修改效果依然存在
- *       ✗ 新开始的游戏不会继承旧存档的修改（除非在游戏开始时重新执行一次插件命令）
- * 3. 若要恢复原名或原说明，可将新内容设为空字符串，例如：
- *       RenameItem 5 ""          // 清除改名，恢复数据库原名
- *       RenameItemDesc 5 ""       // 清除改说明，恢复数据库原说明
- * 4. 插件通过劫持绘制方法实现，因此兼容性极好。只要游戏窗口使用标准的 drawItemName 和 Window_Help 显示，就能自动生效。
- *    目前已知与 NUUN_ItemBook 图鉴插件完全兼容（请将该插件置于 NUUN_ItemBook 之后）。
- *
- * ██████ 原理说明（写给开发者） ██████
- * 1. 数据存储：在 Game_System 中新增两个对象 _renamedItemNames 和 _renamedItemDescs，
- *    以 `${type}${id}` 为键（如 "i5"）保存修改后的内容。这些对象随存档一起保存/加载。
- * 2. 名称修改：覆盖 Window_Base.drawItemName 方法，绘制时从存档中获取替换后的名称。
- * 3. 说明文修改：覆盖 Window_Help.setItem 方法，在调用原方法后，检查是否有存档中的说明，
- *    若有则调用 this.setText() 替换显示文本。
- * 4. 由于修改发生在绘制层，数据库原始数据始终不变，因此不会与其他插件产生冲突。
- *
- * ██████ 高级脚本调用 ██████
- *   // 修改名称
- *   $gameSystem.setRenamedItemName('i', itemId, '新名称');   // i=物品, w=武器, a=防具
- *   $gameSystem.getRenamedItemName('i', itemId);             // 获取名称
- *
- *   // 修改说明
- *   $gameSystem.setRenamedItemDesc('i', itemId, '新说明');
- *   $gameSystem.getRenamedItemDesc('i', itemId);
+ * ██████ 脚本调用（无需引号） ██████
+ *   $gameSystem.setRenamedItemName('i', id, '新名称');
+ *   $gameSystem.setRenamedItemDesc('i', id, '新说明');
  *
  * @command RenameItem
  * @text 修改物品名称
- * @desc 永久修改指定ID的物品名称
  * @arg itemId
  * @type item
  * @text 物品ID
- * @desc 物品ID
  * @arg newName
  * @type string
  * @text 新名称
- * @desc 新名称（如需空格请用英文引号括起）
  *
  * @command RenameWeapon
  * @text 修改武器名称
- * @desc 永久修改指定ID的武器名称
  * @arg itemId
  * @type weapon
  * @text 武器ID
- * @desc 武器ID
  * @arg newName
  * @type string
  * @text 新名称
- * @desc 新名称（如需空格请用英文引号括起）
  *
  * @command RenameArmor
  * @text 修改防具名称
- * @desc 永久修改指定ID的防具名称
  * @arg itemId
  * @type armor
  * @text 防具ID
- * @desc 防具ID
  * @arg newName
  * @type string
  * @text 新名称
- * @desc 新名称（如需空格请用英文引号括起）
  *
  * @command RenameItemDesc
- * @text 修改物品说明文
- * @desc 永久修改指定ID的物品说明文
+ * @text 修改物品说明
  * @arg itemId
  * @type item
  * @text 物品ID
- * @desc 物品ID
  * @arg newDesc
  * @type string
- * @text 新说明文
- * @desc 新说明文（如需空格请用英文引号括起）
+ * @text 新说明
  *
  * @command RenameWeaponDesc
- * @text 修改武器说明文
- * @desc 永久修改指定ID的武器说明文
+ * @text 修改武器说明
  * @arg itemId
  * @type weapon
  * @text 武器ID
- * @desc 武器ID
  * @arg newDesc
  * @type string
- * @text 新说明文
- * @desc 新说明文（如需空格请用英文引号括起）
+ * @text 新说明
  *
  * @command RenameArmorDesc
- * @text 修改防具说明文
- * @desc 永久修改指定ID的防具说明文
+ * @text 修改防具说明
  * @arg itemId
  * @type armor
  * @text 防具ID
- * @desc 防具ID
  * @arg newDesc
  * @type string
- * @text 新说明文
- * @desc 新说明文（如需空格请用英文引号括起）
+ * @text 新说明
  */
 
 (() => {
     const pluginName = 'Huanaiyka_ItemRenamer';
 
-    // ------------------------------------------------------------
-    // Game_System 扩展：保存改名映射 + 改说明映射
-    // ------------------------------------------------------------
+    // ---------- 辅助：将字符串中的 \n 转义为数据库可识别的换行符 ----------
+    function escapeNewlines(str) {
+        if (typeof str !== 'string') return '';
+        return str.replace(/\\n/g, '\n').replace(/\\\\n/g, '\\n');
+    }
+
+    // ---------- 获取数据数组 ----------
+    function getDataArray(type) {
+        if (type === 'i') return $dataItems;
+        if (type === 'w') return $dataWeapons;
+        if (type === 'a') return $dataArmors;
+        return null;
+    }
+
+    // ---------- Game_System 扩展 ----------
     const _Game_System_initialize = Game_System.prototype.initialize;
     Game_System.prototype.initialize = function() {
         _Game_System_initialize.call(this);
-        this._renamedItemNames = {}; // 名称存储 { "i5": "新名字", ... }
-        this._renamedItemDescs = {}; // 说明存储 { "i5": "新说明", ... }
+        this._renamedItemNames = {};
+        this._renamedItemDescs = {};
+        this._originalItemNames = {};
+        this._originalItemDescs = {};
     };
 
-    // ---- 名称操作 ----
-    Game_System.prototype.setRenamedItemName = function(type, id, newName) {
-        if (!this._renamedItemNames) this._renamedItemNames = {};
+    // ---------- 应用所有修改到数据库 ----------
+    Game_System.prototype.applyAllRenames = function() {
+        const types = ['i', 'w', 'a'];
+        types.forEach(type => {
+            const data = getDataArray(type);
+            if (!data) return;
+            Object.keys(this._renamedItemNames || {}).forEach(key => {
+                if (key.startsWith(type)) {
+                    const id = parseInt(key.slice(1));
+                    const newName = this._renamedItemNames[key];
+                    if (data[id]) {
+                        if (!this._originalItemNames[key]) {
+                            this._originalItemNames[key] = data[id].name;
+                        }
+                        data[id].name = newName;
+                    }
+                }
+            });
+            Object.keys(this._renamedItemDescs || {}).forEach(key => {
+                if (key.startsWith(type)) {
+                    const id = parseInt(key.slice(1));
+                    const newDesc = this._renamedItemDescs[key];
+                    if (data[id]) {
+                        if (!this._originalItemDescs[key]) {
+                            this._originalItemDescs[key] = data[id].description;
+                        }
+                        data[id].description = newDesc;
+                    }
+                }
+            });
+        });
+    };
+
+    // ---------- 恢复原始值 ----------
+    Game_System.prototype.restoreOriginal = function(type, id) {
         const key = type + id;
-        if (newName && newName.trim() !== '') {
-            this._renamedItemNames[key] = String(newName);
-        } else {
-            delete this._renamedItemNames[key]; // 空字符串表示清除
+        const data = getDataArray(type);
+        if (!data || !data[id]) return;
+        if (this._originalItemNames[key]) {
+            data[id].name = this._originalItemNames[key];
+            delete this._originalItemNames[key];
+        }
+        if (this._originalItemDescs[key]) {
+            data[id].description = this._originalItemDescs[key];
+            delete this._originalItemDescs[key];
         }
     };
 
-    Game_System.prototype.getRenamedItemName = function(type, id) {
-        if (!this._renamedItemNames) return null;
-        return this._renamedItemNames[type + id] || null;
+    // ---------- 设置名称 ----------
+    Game_System.prototype.setRenamedItemName = function(type, id, newName) {
+        const key = type + id;
+        const data = getDataArray(type);
+        if (!data || !data[id]) return;
+        if (!this._originalItemNames[key]) {
+            this._originalItemNames[key] = data[id].name;
+        }
+        if (newName && newName.trim() !== '') {
+            const trimmed = newName.trim();
+            this._renamedItemNames[key] = trimmed;
+            data[id].name = trimmed;
+        } else {
+            delete this._renamedItemNames[key];
+            if (this._originalItemNames[key]) {
+                data[id].name = this._originalItemNames[key];
+                delete this._originalItemNames[key];
+            }
+        }
     };
 
-    // ---- 说明操作 ----
+    // ---------- 设置说明 ----------
     Game_System.prototype.setRenamedItemDesc = function(type, id, newDesc) {
-        if (!this._renamedItemDescs) this._renamedItemDescs = {};
         const key = type + id;
+        const data = getDataArray(type);
+        if (!data || !data[id]) return;
+        if (!this._originalItemDescs[key]) {
+            this._originalItemDescs[key] = data[id].description;
+        }
         if (newDesc && newDesc.trim() !== '') {
-            this._renamedItemDescs[key] = String(newDesc);
+            const processed = escapeNewlines(newDesc.trim());
+            this._renamedItemDescs[key] = processed;
+            data[id].description = processed;
         } else {
             delete this._renamedItemDescs[key];
+            if (this._originalItemDescs[key]) {
+                data[id].description = this._originalItemDescs[key];
+                delete this._originalItemDescs[key];
+            }
         }
     };
 
+    // ---------- 获取方法 ----------
+    Game_System.prototype.getRenamedItemName = function(type, id) {
+        return this._renamedItemNames[type + id] || null;
+    };
     Game_System.prototype.getRenamedItemDesc = function(type, id) {
-        if (!this._renamedItemDescs) return null;
         return this._renamedItemDescs[type + id] || null;
     };
 
-    // ------------------------------------------------------------
-    // 插件命令注册（名称修改）
-    // ------------------------------------------------------------
-    PluginManager.registerCommand(pluginName, 'RenameItem', args => {
-        const itemId = Number(args.itemId);
-        const newName = String(args.newName);
-        $gameSystem.setRenamedItemName('i', itemId, newName);
-    });
+    // ---------- 插件命令注册 ----------
+    function registerCommandAliases(commandName, func) {
+        PluginManager.registerCommand(pluginName, commandName, func);
+        PluginManager.registerCommand(pluginName, commandName.toLowerCase(), func);
+    }
 
-    PluginManager.registerCommand(pluginName, 'RenameWeapon', args => {
-        const weaponId = Number(args.itemId);
-        const newName = String(args.newName);
-        $gameSystem.setRenamedItemName('w', weaponId, newName);
-    });
+    function makeNameHandler(type) {
+        return args => {
+            const id = Number(args.itemId);
+            const newName = String(args.newName || '');
+            $gameSystem.setRenamedItemName(type, id, newName);
+        };
+    }
+    function makeDescHandler(type) {
+        return args => {
+            const id = Number(args.itemId);
+            const newDesc = String(args.newDesc || '');
+            $gameSystem.setRenamedItemDesc(type, id, newDesc);
+        };
+    }
 
-    PluginManager.registerCommand(pluginName, 'RenameArmor', args => {
-        const armorId = Number(args.itemId);
-        const newName = String(args.newName);
-        $gameSystem.setRenamedItemName('a', armorId, newName);
-    });
+    registerCommandAliases('RenameItem', makeNameHandler('i'));
+    registerCommandAliases('RenameWeapon', makeNameHandler('w'));
+    registerCommandAliases('RenameArmor', makeNameHandler('a'));
+    registerCommandAliases('RenameItemDesc', makeDescHandler('i'));
+    registerCommandAliases('RenameWeaponDesc', makeDescHandler('w'));
+    registerCommandAliases('RenameArmorDesc', makeDescHandler('a'));
 
-    // ------------------------------------------------------------
-    // 插件命令注册（说明修改）
-    // ------------------------------------------------------------
-    PluginManager.registerCommand(pluginName, 'RenameItemDesc', args => {
-        const itemId = Number(args.itemId);
-        const newDesc = String(args.newDesc);
-        $gameSystem.setRenamedItemDesc('i', itemId, newDesc);
-    });
-
-    PluginManager.registerCommand(pluginName, 'RenameWeaponDesc', args => {
-        const weaponId = Number(args.itemId);
-        const newDesc = String(args.newDesc);
-        $gameSystem.setRenamedItemDesc('w', weaponId, newDesc);
-    });
-
-    PluginManager.registerCommand(pluginName, 'RenameArmorDesc', args => {
-        const armorId = Number(args.itemId);
-        const newDesc = String(args.newDesc);
-        $gameSystem.setRenamedItemDesc('a', armorId, newDesc);
-    });
-
-    // ------------------------------------------------------------
-    // 覆盖 Window_Base.drawItemName 使名称生效
-    // ------------------------------------------------------------
-    const _Window_Base_drawItemName = Window_Base.prototype.drawItemName;
-    Window_Base.prototype.drawItemName = function(item, x, y, width) {
-        if (!item) return;
-
-        let type = null;
-        if (DataManager.isItem(item)) type = 'i';
-        else if (DataManager.isWeapon(item)) type = 'w';
-        else if (DataManager.isArmor(item)) type = 'a';
-
-        let displayName = item.name;
-        if (type && $gameSystem) {
-            const renamed = $gameSystem.getRenamedItemName(type, item.id);
-            if (renamed) displayName = renamed;
+    // ---------- 读档后自动应用修改 ----------
+const _DataManager_extractSaveContents = DataManager.extractSaveContents;
+DataManager.extractSaveContents = function(contents) {
+    _DataManager_extractSaveContents.call(this, contents);
+    // 确保旧存档具有插件所需的属性
+    if ($gameSystem) {
+        if (!$gameSystem._renamedItemNames) $gameSystem._renamedItemNames = {};
+        if (!$gameSystem._renamedItemDescs) $gameSystem._renamedItemDescs = {};
+        if (!$gameSystem._originalItemNames) $gameSystem._originalItemNames = {};
+        if (!$gameSystem._originalItemDescs) $gameSystem._originalItemDescs = {};
+    }
+    if ($gameSystem && $gameSystem.applyAllRenames) {
+        $gameSystem.applyAllRenames();
+    }
+};
+    // ---------- 新游戏时应用修改 ----------
+    const _Scene_Boot_start = Scene_Boot.prototype.start;
+    Scene_Boot.prototype.start = function() {
+        _Scene_Boot_start.call(this);
+        if ($gameSystem && $gameSystem.applyAllRenames) {
+            $gameSystem.applyAllRenames();
         }
-
-        const iconY = y + (this.lineHeight() - ImageManager.iconHeight) / 2;
-        const textMargin = item.iconIndex > 0 ? ImageManager.iconWidth + 4 : 0;
-        const itemWidth = Math.max(0, width - textMargin);
-        if (item.iconIndex > 0) {
-            this.drawIcon(item.iconIndex, x, iconY);
-        }
-        this.drawText(displayName, x + textMargin, y, itemWidth);
     };
 
-    // ------------------------------------------------------------
-    // 覆盖 Window_Help.setItem 使说明文生效
-    // ------------------------------------------------------------
+    // ---------- 劫持 Window_Help.setItem 强制使用 setText 保证换行 ----------
     const _Window_Help_setItem = Window_Help.prototype.setItem;
     Window_Help.prototype.setItem = function(item) {
         _Window_Help_setItem.call(this, item);
@@ -258,8 +276,19 @@
         if (type && $gameSystem) {
             const renamedDesc = $gameSystem.getRenamedItemDesc(type, item.id);
             if (renamedDesc) {
-                this.setText(renamedDesc); // 覆盖为存档中的说明文
+                this.setText(renamedDesc);
+                if (this.refresh) this.refresh();
             }
         }
+    };
+
+    // ---------- 兼容旧存档 ----------
+    const _Game_System_initialize_old = Game_System.prototype.initialize;
+    Game_System.prototype.initialize = function() {
+        _Game_System_initialize_old.call(this);
+        if (!this._renamedItemNames) this._renamedItemNames = {};
+        if (!this._renamedItemDescs) this._renamedItemDescs = {};
+        if (!this._originalItemNames) this._originalItemNames = {};
+        if (!this._originalItemDescs) this._originalItemDescs = {};
     };
 })();

@@ -192,7 +192,6 @@
     try {
       list = JSON.parse(raw);
     } catch (e) {
-      console.error("[Huanaiyka_EquipDetail] 解析预设列表失败:", e);
       return new Map();
     }
     if (!Array.isArray(list)) return new Map();
@@ -211,7 +210,6 @@
         if (id && text) map.set(id, text);
       }
     }
-    console.log("[Huanaiyka_EquipDetail] 已加载预设列表:", Array.from(map.keys()));
     return map;
   })();
 
