@@ -1,7 +1,7 @@
 # MZ-Plugins
 Plugins for RPG Maker MZ
 
-这里所有的插件由我（幻爱）借助AI（Deepseek）制作而成。
+这里所有的插件由我（幻爱）借助AI（Deepseek和Gemini）制作而成。
 改变版的插件已确认原作者允许更改和分发。
 
 所有插件遵守MIT协议，请自由地使用。
