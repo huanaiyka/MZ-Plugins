@@ -7,7 +7,7 @@
  * 本插件允许通过在状态的备注中添加标签，动态调整敌人精灵的透明度。
  * 
  * 标签格式：
- *   <透明标签:数值>   （例如 <transparent:128>）
+ *   <transparent:数值>   （例如 <transparent:128>）
  *   数值范围 0～255，0=全透明，255=完全不透明。
  * 
  * 透明度规则：
@@ -15,7 +15,6 @@
  *   - 若敌人没有任何带标签的状态，则使用【默认透明度】。
  *   - 若敌人死亡，则不干预透明度，让默认死亡动画正常播放。
  * 
- * 插件参数：
  *   @param defaultOpacity
  *   @text 默认透明度
  *   @desc 敌人没有透明度状态时使用的透明度（0全透明～255不透明）
@@ -31,8 +30,14 @@
  */
 
 (() => {
-    const parameters = PluginManager.parameters('StateTransparency');
-    const defaultOpacity = Number(parameters.defaultOpacity || 255);
+    // 自动获取当前脚本文件名，防止因重命名脚本导致参数读取失败
+    const scriptName = document.currentScript ? document.currentScript.src.match(/\/([^\/]+)\.js$/)[1] : 'Huanaiyka_EnemyStateImage';
+    const parameters = PluginManager.parameters(scriptName);
+    
+    // 增加严格兜底：若解析结果无效或未设置，强制默认为 255
+    const parsedOpacity = Number(parameters.defaultOpacity);
+    const defaultOpacity = (isNaN(parsedOpacity) || parameters.defaultOpacity === undefined || parameters.defaultOpacity === '') ? 255 : parsedOpacity;
+    
     const tagName = String(parameters.tagName || 'transparent');
 
     // 构建正则表达式，用于从备注中提取透明度数值
@@ -63,6 +68,8 @@
 
         for (const state of states) {
             const note = state.note;
+            if (!note) continue; // 安全检查：防止 note 为空
+
             const match = note.match(tagRegex);
             if (match) {
                 const opacity = parseInt(match[1], 10);

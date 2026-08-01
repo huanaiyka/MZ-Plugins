@@ -83,28 +83,6 @@
  *   <EnemyElementAvoid:false>  → 强制禁用
  *   <EnemyElementAvoid>        → 等同于 true
  *
- * ============================================================================
- * 使用示例
- * ============================================================================
- * 1. 只使用元素避免：<EnemyElementAvoid:true>
- *
- * 2. 优先打当前 HP 最低的角色：<TargetPref: lowest_hp>
- *
- * 3. 优先打最大 HP 最高的角色：<TargetPref: highest_maxhp>
- *
- * 4. 优先打最大 MP 最小的角色：<TargetPref: lowest_maxmp>
- *
- * 5. 组合规则：先找最大 HP 最小的，再从中挑物防最低的：<TargetPref: lowest_maxhp, lowest_def>
- *
- * 6. 动态名字（变量 1 存储目标名字）：<TargetPref: target_name("\V[1]")>
- *
- * 7. 多规则分行写法（换行和缩进不影响解析）：
- *    <TargetPref:
- *      avoid_name("角色名A"),
- *      avoid_name("角色名B"),
- *      lowest_hp
- *    >
- *
  * @param enable
  * @text 默认启用元素避免
  * @type boolean
@@ -162,21 +140,20 @@
     const WHOLE_SKILL_MODE    = params["wholeSkillMode"] === "all" ? "all" : "any";
     const RETARGET_RANDOM     = params["retargetOnRandom"] !== "false";
 
-    // 六围属性映射表 (paramId 对应 RMMZ 默认属性)
+    // 六围属性映射表
     const PARAM_MAP = {
         mhp: 0, mmp: 1, atk: 2, def: 3, mat: 4, mdf: 5, agi: 6, luk: 7
     };
 
     //---------------------------------------------
-    // 辅助函数：根据 TGR (受到攻击几率) 权重选取唯一目标
+    // 辅助函数：基于 TGR 权重随机抽取单一目标
     //---------------------------------------------
     function selectTargetByTgr(candidates) {
         if (!candidates || candidates.length === 0) return null;
         if (candidates.length === 1) return candidates[0];
 
-        const tgrSum = candidates.reduce((r, member) => r + member.tgr, 0);
+        const tgrSum = candidates.reduce((sum, member) => sum + member.tgr, 0);
         if (tgrSum <= 0) {
-            // 如果所有候选目标的 TGR 全都为 0，则退回到完全均等随机
             return candidates[Math.floor(Math.random() * candidates.length)];
         }
 
@@ -191,24 +168,22 @@
     }
 
     //---------------------------------------------
-    // 辅助函数：解析转义字符 \N[n] 和 \V[n]
+    // 辅助函数：解析 \N[n] 与 \V[n] 动态转义字符
     //---------------------------------------------
     function resolveNameString(str) {
         if (!str) return str;
-        // 替换 \N[数字] -> 角色名
         str = str.replace(/\\N\[(\d+)\]/gi, (_, id) => {
             const actor = $dataActors ? $dataActors[parseInt(id, 10)] : null;
             return actor ? actor.name : "";
         });
-        // 替换 \V[数字] -> 变量值
         str = str.replace(/\\V\[(\d+)\]/gi, (_, id) => {
-            return String($gameVariables.value(parseInt(id, 10)) || "");
+            return String($gameVariables ? $gameVariables.value(parseInt(id, 10)) : "");
         });
         return str;
     }
 
     //---------------------------------------------
-    // 辅助函数：获取敌人的元素避免 AI 开关
+    // 辅助函数：获取敌人的元素避免开关
     //---------------------------------------------
     function isEnemyAIActive(enemy) {
         if (!enemy || !enemy.enemy()) return DEFAULT_ENABLE;
@@ -222,21 +197,21 @@
     }
 
     //---------------------------------------------
-    // 进攻偏好规则解析
+    // 解析偏好规则文本
     //---------------------------------------------
     function parseTargetPrefRules(meta) {
         if (!meta || !meta.TargetPref) return [];
         const ruleStr = String(meta.TargetPref).trim();
         if (ruleStr === "") return [];
-        
-        // 移除多余的空白和换行，并分割
+
         const parts = ruleStr.replace(/\s+/g, " ").split(",").map(s => s.trim());
         const rules = [];
 
-        for (let part of parts) {
+        for (const part of parts) {
+            if (!part) continue;
             const lowerPart = part.toLowerCase();
-            
-            // 基础属性、最大值与六围
+
+            // 基础属性与属性倍率
             if ([
                 "lowest_hp", "highest_hp", "lowest_mp", "highest_mp", "lowest_tp", "highest_tp",
                 "lowest_level", "highest_level", "lowest_maxhp", "highest_maxhp", "lowest_maxmp", "highest_maxmp",
@@ -248,67 +223,61 @@
                 continue;
             }
 
-            // 状态规则
+            // 状态筛选规则
             let match = part.match(/^(no_)?state\((\d+)\)$/i);
             if (match) {
-                const isNoState = !!match[1];
-                const stateId = parseInt(match[2], 10);
-                if (!isNaN(stateId)) {
-                    rules.push({ type: isNoState ? "no_state" : "state", value: stateId });
-                }
+                rules.push({
+                    type: match[1] ? "no_state" : "state",
+                    value: parseInt(match[2], 10)
+                });
                 continue;
             }
 
-            // 名字规则 (保留双/单引号，并支持变量延迟解析)
+            // 名字筛选规则
             match = part.match(/^(target|avoid)_name\((['"]?)(.*?)\2\)$/i);
             if (match) {
-                const type = match[1].toLowerCase() === "target" ? "target_name" : "avoid_name";
-                const rawName = match[3];
-                rules.push({ type: type, rawValue: rawName });
+                rules.push({
+                    type: match[1].toLowerCase() === "target" ? "target_name" : "avoid_name",
+                    rawValue: match[3]
+                });
                 continue;
             }
 
-            // 角色ID规则
+            // 角色 ID 规则
             match = part.match(/^(target|avoid)_id\((\d+)\)$/i);
             if (match) {
-                const type = match[1].toLowerCase() === "target" ? "target_id" : "avoid_id";
-                const actorId = parseInt(match[2], 10);
-                if (!isNaN(actorId)) {
-                    rules.push({ type: type, value: actorId });
-                }
+                rules.push({
+                    type: match[1].toLowerCase() === "target" ? "target_id" : "avoid_id",
+                    value: parseInt(match[2], 10)
+                });
                 continue;
             }
 
-            console.warn("Huanaiyka_EnemyTargetAI: 未知的 TargetPref 规则 - " + part);
+            console.warn(`Huanaiyka_EnemyTargetAI: 未知的偏好规则 -> "${part}"`);
         }
+
         return rules;
     }
 
-    // 检查技能是否适用元素倍率规则
+    // 检查技能是否使用元素倍率偏好
     function isElementRateRuleApplicable(action) {
         if (!action) return false;
         const skill = action.item();
         if (!skill) return false;
-        const elementId = skill.damage.elementId;
+        const elementId = skill.damage ? skill.damage.elementId : 0;
         if (IGNORE_NO_ELEMENT && elementId === 0) return false;
         if (!CHECK_NON_DAMAGE && !action.isDamage()) return false;
         return elementId > 0;
     }
 
     //---------------------------------------------
-    // 根据规则递归筛选目标 (完美兼容 TGR)
+    // 重构：逐层迭代过滤算法 (List-Filtering Iteration)
     //---------------------------------------------
-    function selectTargetByPreference(candidates, rules, index, action) {
-        if (!candidates || candidates.length === 0) return undefined;
-        if (index >= rules.length) {
-            // 筛选至最后一个过滤链或没有规则时，通过 TGR 权重从剩下的候选人中抽取目标
-            return selectTargetByTgr(candidates);
-        }
+    function processSingleRuleFilter(candidates, rule, action) {
+        if (!candidates || candidates.length <= 1) return candidates;
 
-        const rule = rules[index];
         if (rule.type === "random") {
-            // 如果规则为 "random"，同样直接利用 TGR 权重分配
-            return selectTargetByTgr(candidates);
+            return candidates; // 遇到 random 则保持原样，后续通过 TGR 抽取
         }
 
         let filtered = [];
@@ -331,32 +300,33 @@
                 break;
             }
             case "target_id":
-                filtered = candidates.filter(t => t.actorId() === rule.value);
+                filtered = candidates.filter(t => t.isActor() && t.actorId() === rule.value);
                 break;
             case "avoid_id":
-                filtered = candidates.filter(t => t.actorId() !== rule.value);
+                filtered = candidates.filter(t => t.isActor() && t.actorId() !== rule.value);
                 break;
             case "highest_element_rate":
             case "lowest_element_rate": {
-                if (!isElementRateRuleApplicable(action)) break;
+                if (!isElementRateRuleApplicable(action)) return candidates;
                 const elementId = action.item().damage.elementId;
                 const isHighest = rule.type === "highest_element_rate";
-                let targetValue = isHighest ? -Infinity : Infinity;
-                for (const t of candidates) {
-                    const val = t.elementRate(elementId);
-                    if ((isHighest && val > targetValue) || (!isHighest && val < targetValue)) {
-                        targetValue = val;
-                        filtered = [t];
-                    } else if (val === targetValue) {
-                        filtered.push(t);
+                let bestValue = isHighest ? -Infinity : Infinity;
+
+                for (const target of candidates) {
+                    const rate = target.elementRate(elementId);
+                    if ((isHighest && rate > bestValue) || (!isHighest && rate < bestValue)) {
+                        bestValue = rate;
+                        filtered = [target];
+                    } else if (rate === bestValue) {
+                        filtered.push(target);
                     }
                 }
                 break;
             }
             default: {
-                // 数值与六围属性的比对
+                // 六围与属性最大/当前值筛选
                 let getValue = null;
-                let isLowest = rule.type.startsWith("lowest_");
+                const isLowest = rule.type.startsWith("lowest_");
 
                 if (rule.type.includes("_hp")) {
                     getValue = t => rule.type.includes("max") ? t.mhp : t.hp;
@@ -365,7 +335,7 @@
                 } else if (rule.type.includes("_tp")) {
                     getValue = t => t.tp;
                 } else if (rule.type.includes("_level")) {
-                    getValue = t => t.level;
+                    getValue = t => (t.isActor() ? t.level : 1);
                 } else {
                     const statKey = rule.type.split("_")[1];
                     if (PARAM_MAP[statKey] !== undefined) {
@@ -375,14 +345,14 @@
                 }
 
                 if (getValue) {
-                    let targetValue = isLowest ? Infinity : -Infinity;
-                    for (const t of candidates) {
-                        const val = getValue(t);
-                        if ((isLowest && val < targetValue) || (!isLowest && val > targetValue)) {
-                            targetValue = val;
-                            filtered = [t];
-                        } else if (val === targetValue) {
-                            filtered.push(t);
+                    let bestValue = isLowest ? Infinity : -Infinity;
+                    for (const target of candidates) {
+                        const val = getValue(target);
+                        if ((isLowest && val < bestValue) || (!isLowest && val > bestValue)) {
+                            bestValue = val;
+                            filtered = [target];
+                        } else if (val === bestValue) {
+                            filtered.push(target);
                         }
                     }
                 }
@@ -390,14 +360,32 @@
             }
         }
 
-        // 如果该规则没有筛选出任何角色，则平滑过渡到下一个优先级规则
-        if (filtered.length === 0) {
-            return selectTargetByPreference(candidates, rules, index + 1, action);
-        }
-        return selectTargetByPreference(filtered, rules, index + 1, action);
+        // 如果筛选后仍有符合条件的成员，则更新候选列表；如果筛选结果为空则回退保底（平滑过度）
+        return filtered.length > 0 ? filtered : candidates;
     }
 
-    // 获取敌人的目标偏好规则（缓存）
+    function selectTargetByPreference(candidates, rules, action) {
+        if (!candidates || candidates.length === 0) return null;
+        if (candidates.length === 1) return candidates[0];
+
+        let currentCandidates = candidates.slice();
+
+        // 顺序迭代解析规则过滤链
+        if (rules && rules.length > 0) {
+            for (const rule of rules) {
+                currentCandidates = processSingleRuleFilter(currentCandidates, rule, action);
+                // 筛选完毕仅剩 1 人时可立即返回
+                if (currentCandidates.length === 1) {
+                    return currentCandidates[0];
+                }
+            }
+        }
+
+        // 最终多名选人结果由 TGR 决定
+        return selectTargetByTgr(currentCandidates);
+    }
+
+    // 缓存解析过的偏好规则
     function getEnemyTargetPrefRules(enemy) {
         if (!enemy) return [];
         if (enemy._targetPrefRulesParsed === undefined) {
@@ -409,22 +397,20 @@
     }
 
     //---------------------------------------------
-    // 核心判断：某技能对某个目标是否有效
+    // 元素免疫有效度检查
     //---------------------------------------------
     function isSkillEffectiveOnTarget(action, target) {
         const skill = action.item();
         if (!skill) return true;
 
-        const elementId = skill.damage.elementId;
+        const elementId = skill.damage ? skill.damage.elementId : 0;
         if (IGNORE_NO_ELEMENT && elementId === 0) return true;
         if (!CHECK_NON_DAMAGE && !action.isDamage()) return true;
         if (elementId <= 0) return true;
 
-        const rate = target.elementRate(elementId);
-        return rate > IMMUNE_THRESHOLD;
+        return target.elementRate(elementId) > IMMUNE_THRESHOLD;
     }
 
-    // 判断某技能在当前战斗中对敌方是否整体有效
     function isSkillUsableByElement(action, subject) {
         const opponents = subject.opponentsUnit().aliveMembers();
         if (opponents.length === 0) return false;
@@ -436,31 +422,26 @@
         }
     }
 
-    // 过滤敌人的行动列表
     function filterEnemyActions(enemy) {
         if (!isEnemyAIActive(enemy)) return;
         const oldActions = enemy._actions;
         if (!oldActions || oldActions.length === 0) return;
-        
-        const newActions = [];
-        for (const action of oldActions) {
-            if (!action || !action.item()) continue;
-            if (isSkillUsableByElement(action, enemy)) {
-                newActions.push(action);
-            }
-        }
-        
+
+        const newActions = oldActions.filter(action => {
+            return action && action.item() && isSkillUsableByElement(action, enemy);
+        });
+
         if (newActions.length > 0) {
             enemy._actions = newActions;
             enemy._elementAvoidFallback = false;
         } else {
-            // 所有技能完全被免疫：保留原行动组的第一个作为保底（不得已释放）
+            // 所有技能全免疫时保底施放第一个技能，防止跳过回合死锁
             enemy._actions = [oldActions[0]];
             enemy._elementAvoidFallback = true;
         }
     }
 
-    // 拦截制作动作方法
+    // 挂载行动逻辑过滤
     const _Game_Enemy_makeActions = Game_Enemy.prototype.makeActions;
     Game_Enemy.prototype.makeActions = function() {
         this._elementAvoidFallback = false;
@@ -471,27 +452,21 @@
     };
 
     //---------------------------------------------
-    // 重选随机单体目标逻辑（已整合 <SkillNoSelf> 排除自身逻辑）
+    // 重写目标选取：技能 <SkillNoSelf> 与 进攻偏好筛选
     //---------------------------------------------
     const _Game_Action_targetsForFriends = Game_Action.prototype.targetsForFriends;
     Game_Action.prototype.targetsForFriends = function() {
         const subject = this.subject();
-        // 如果是敌人在准备释放对友方（我方单体）的随机目标技能时
         if (subject && subject.isEnemy() && this.isForFriend() && this.isForOne() && this._targetIndex < 0) {
             const skill = this.item();
-            if (skill && skill.meta.SkillNoSelf) {
+            if (skill && skill.meta && skill.meta.SkillNoSelf) {
                 const allFriends = this.friendsUnit().aliveMembers();
-                // 核心改动：如果技能有 <SkillNoSelf>，在获取同伴时直接把“自己”踢出去！
                 const otherFriends = allFriends.filter(member => member !== subject);
+
                 if (otherFriends.length > 0) {
-                    // 在没有自己的队友名单中，通过 TGR/偏好 筛选目标
                     const prefRules = getEnemyTargetPrefRules(subject);
-                    if (prefRules && prefRules.length > 0) {
-                        const chosen = selectTargetByPreference(otherFriends, prefRules, 0, this);
-                        if (chosen) return [chosen];
-                    }
-                    const target = selectTargetByTgr(otherFriends);
-                    if (target) return [target];
+                    const chosen = selectTargetByPreference(otherFriends, prefRules, this);
+                    if (chosen) return [chosen];
                 }
             }
         }
@@ -505,39 +480,31 @@
             if (subject && subject.isEnemy() && this.isForOne() && this._targetIndex < 0) {
                 const skill = this.item();
                 if (!skill) return _Game_Action_targetsForOpponents.call(this);
-                
-                const elementId = skill.damage.elementId;
+
+                const elementId = skill.damage ? skill.damage.elementId : 0;
                 const isElemental = !(IGNORE_NO_ELEMENT && elementId === 0) &&
                                     (CHECK_NON_DAMAGE || this.isDamage()) &&
                                     elementId > 0;
-                
+
                 const allOpponents = this.opponentsUnit().aliveMembers();
                 if (allOpponents.length === 0) return [];
-                
-                let candidateTargets = allOpponents;
+
+                let candidates = allOpponents;
                 const avoidActive = isEnemyAIActive(subject);
                 const isFallback = subject._elementAvoidFallback === true;
 
-                // 1. 先进行元素过滤（去除免疫的目标）
+                // 1. 过滤免疫目标
                 if (avoidActive && !isFallback && isElemental) {
-                    const validTargets = allOpponents.filter(target => {
-                        return target.elementRate(elementId) > IMMUNE_THRESHOLD;
-                    });
-                    if (validTargets.length > 0) {
-                        candidateTargets = validTargets;
+                    const valid = allOpponents.filter(t => t.elementRate(elementId) > IMMUNE_THRESHOLD);
+                    if (valid.length > 0) {
+                        candidates = valid;
                     }
                 }
-                
-                // 2. 如果配置了进攻偏好标签
+
+                // 2. 依次按进攻偏好规则过滤并抽取目标
                 const prefRules = getEnemyTargetPrefRules(subject);
-                if (prefRules && prefRules.length > 0) {
-                    const chosen = selectTargetByPreference(candidateTargets, prefRules, 0, this);
-                    if (chosen) return [chosen];
-                }
-                
-                // 3. 未配置偏好标签或规则退化时的保底选择：利用原生的 TGR (受到攻击几率) 权重
-                const target = selectTargetByTgr(candidateTargets);
-                if (target) return [target];
+                const chosen = selectTargetByPreference(candidates, prefRules, this);
+                if (chosen) return [chosen];
             }
             return _Game_Action_targetsForOpponents.call(this);
         };

@@ -156,20 +156,10 @@
     function drawToVariable(weights, variableId) {
         // 确保 variableId 是有效数字
         let vid = (typeof variableId === 'number' && !isNaN(variableId)) ? variableId : 1;
-        if (variableId !== vid) {
-            console.warn(`[${PLUGIN_NAME}] 变量ID无效，已自动改为 1。`);
-        }
 
         let idx0 = randomIndexByWeight(weights);
         let result = (idx0 >= 0) ? (idx0 + 1) : 0;
         $gameVariables.setValue(vid, result);
-        
-        // 调试输出（可在控制台查看）
-        if (result === 0) {
-            console.error(`[${PLUGIN_NAME}] 权重随机失败，结果变量 ${vid} 已被设为 0。请检查权重列表。`);
-        } else {
-            console.log(`[${PLUGIN_NAME}] 权重随机成功，选中序号 ${result} (索引 ${idx0})，结果存入变量 ${vid}`);
-        }
     }
 
     // 注册插件命令（带可视化参数）
@@ -180,14 +170,12 @@
 
         // 校验结果变量 ID，若无效则回退到 1 号变量
         if (isNaN(resultVarId)) {
-            console.error(`[${PLUGIN_NAME}] 参数错误: resultVar 必须是数字，已自动使用变量 1。`);
             resultVarId = 1;
         }
 
         // 校验权重输入是否为空
         if (!weightsRaw || weightsRaw.trim() === "") {
             $gameVariables.setValue(resultVarId, 0);
-            console.warn(`[${PLUGIN_NAME}] 权重列表为空，结果变量 ${resultVarId} 已设为 0。`);
             return;
         }
 
@@ -195,7 +183,6 @@
         let normalized = normalizeWeightsString(weightsRaw);
         if (normalized === "") {
             $gameVariables.setValue(resultVarId, 0);
-            console.warn(`[${PLUGIN_NAME}] 标准化后的权重列表为空，结果变量 ${resultVarId} 已设为 0。`);
             return;
         }
 
@@ -206,7 +193,6 @@
             let w = parseFloat(part.trim());
             if (isNaN(w) || w <= 0) {
                 $gameVariables.setValue(resultVarId, 0);
-                console.error(`[${PLUGIN_NAME}] 无效权重值: "${part}"，权重必须为正数。结果变量 ${resultVarId} 已设为 0。`);
                 return;
             }
             weights.push(w);

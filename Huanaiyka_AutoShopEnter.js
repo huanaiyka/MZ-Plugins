@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc 打开商店时自动进入商品列表，并支持仅购买时取消直接退出场景
+ * @plugindesc 打开商店时自动进入商品列表，并支持仅购买时快速退出
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Pluginsz
  *

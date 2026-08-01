@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc 商店自动隐藏已拥有物品 (支持备注标签)
+ * @plugindesc 商店自动隐藏已拥有物品
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * 

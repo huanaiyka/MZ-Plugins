@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc AOE攻击的伤害削减插件
+ * @plugindesc AOE攻击的伤害削减
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help

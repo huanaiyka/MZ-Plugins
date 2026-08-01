@@ -6,7 +6,7 @@
  * @help
  * 使 TorigoyaMZ_Achievement2 的成就数据不再跨存档，
  * 而是随每个游戏存档独立保存。
- * 此补丁必须放在原插件 TorigoyaMZ_Achievement2.js 之后。
+ * 该补丁必须放在原插件 TorigoyaMZ_Achievement2.js 之后。
  */
 
 (function() {

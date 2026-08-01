@@ -139,12 +139,8 @@
         saveItemCursorIndex(this.index());
     };
 
-    // ---------- 处理插件指令 ----------
-    const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
-    Game_Interpreter.prototype.pluginCommand = function(command, args) {
-        _Game_Interpreter_pluginCommand.call(this, command, args);
-        if (command === 'ResetItemCursor') {
-            resetItemCursorMemory();
-        }
-    };
+// ---------- 处理插件指令 (RM MZ 标准方式) ----------
+    PluginManager.registerCommand(pluginName, 'ResetItemCursor', () => {
+        resetItemCursorMemory();
+    });
 })();
