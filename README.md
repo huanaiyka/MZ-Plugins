@@ -144,8 +144,7 @@ Huanaiyka_EquipBreak.js
  * 每件装备的损坏概率、触发条件和伤害类型均可在备注栏中独立配置，
  * 允许显示提示文字并播放音效。
 
-Huanaiyka_EquipDetailWithCodes.js
- * @author 幻爱（原作者：DarkPlasma）
+Huanaiyka_EquipDetailWithCodes.js（原作者：DarkPlasma）
  * 1. 装备详情窗口：在装备场景按指定按键（默认 Shift）显示装备的详细说明。
  *    支持 <detail:文本>、<presetDetail:ID>、<detailButton开关号:文本> 标签。
  * 2. 防具信息转义码：通过变量存储防具ID，在任意文本中使用 \armor_name、\skill_entryN 等动态显示信息。
