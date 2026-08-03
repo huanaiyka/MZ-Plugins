@@ -15,7 +15,7 @@ Plugins for RPG Maker MZ
 Huanaiyka_AoeDamageCut.js
 ★AOE攻击的伤害削减
  * 此插件允许你为“全体攻击”的伤害设置一个固定百分比削减。
- * 例如设置削减 30%，则全体攻击的最终伤害会变为原来的 70%。
+ * 例如设置削减 20%，则全体攻击的最终伤害会变为原来的 80%。
 
 Huanaiyka_ArmorLockHP.js
 ★制作锁血防具
@@ -24,8 +24,8 @@ Huanaiyka_ArmorLockHP.js
 
 Huanaiyka_AutoArmorUpgrade.js
 ★动态链式防具自动升级系统
- * 本插件提供多种方式实现防具自动升级，完全支持自定义装备类型。
- * 所有角色、防具、变量均可通过下拉菜单选择，装备槽支持直接输入数字。
+ * 支持按指定新旧ID升级、按基础ID+等级变量链式升级、槽位ID+1升级，
+ * 以及全队搜索升级等多种方式，适用于装备进化、强化等游戏机制。
 
 Huanaiyka_AutoAttackOnHold.js
 ★快速战斗，鼠标长按时自动为所有角色选择攻击第一个敌人
@@ -36,7 +36,7 @@ Huanaiyka_AutoAttackOnHold.js
 
 Huanaiyka_AutoShopEnter.js
 ★打开商店时自动进入商品列表，并支持仅购买时快速退出
- * 无需再手动选择“购买”命令，相当于自动为你按下了确认键。
+ * 无需再手动选择“购买”，相当于自动为你按下了确认键。
  * 在商品购买列表中按“取消”按键时，将直接退出商店场景，无需二次确认。
 
 Huanaiyka_AutoSkillDesc.js
@@ -49,6 +49,7 @@ Huanaiyka_BattleResultDelay.js
 ★敌群页延迟执行战斗结果
  * 在敌群事件页中使用四个插件指令，分别标记通用、胜利、失败、逃跑时
  * 延迟执行的事件指令块。战斗结束后，按「通用块 → 结果块」的顺序在地图上执行。
+ * 本插件的优势在于能够更好地控制随机遇敌等场景下的执行流程。
 
 Huanaiyka_ChampionshipSystem.js
 ★擂台赛模拟器
@@ -144,14 +145,14 @@ Huanaiyka_EquipBreak.js
  * 每件装备的损坏概率、触发条件和伤害类型均可在备注栏中独立配置，
  * 允许显示提示文字并播放音效。
 
-Huanaiyka_EquipDetailWithCodes.js（原作者：DarkPlasma）
+Huanaiyka_EquipDetailWithCodes.js（原作者：DarkPlasma）★装备详细说明窗口与防具信息转义码 
  * 1. 装备详情窗口：在装备场景按指定按键（默认 Shift）显示装备的详细说明。
  *    支持 <detail:文本>、<presetDetail:ID>、<detailButton开关号:文本> 标签。
  * 2. 防具信息转义码：通过变量存储防具ID，在任意文本中使用 \armor_name、\skill_entryN 等动态显示信息。
  * 修改说明：本插件在原版（仅支持简单 <detail> 标签）基础上，新增了预设说明、开关控制标签、自动换行、装备ID存储等扩展功能，并提供更丰富的配置参数。
 
-★Huanaiyka_EquipElementResist.js
-装备属性有效度完全覆盖
+Huanaiyka_EquipElementResist.js
+★装备属性有效度完全覆盖
  * 本插件让特定装备在穿戴后，角色的所有属性有效度（抗性）完全由该装备
  * 自带的"属性有效度"特性提供，无视角色本身、职业、状态等其他来源。
 
@@ -174,10 +175,6 @@ Huanaiyka_EveryEventIsMove.js（原作者：李先生）
 ★长按推动NPC
  * 本插件在原版（仅支持长按推动与推箱子）基础上，增加了移动类型过滤、自定义长按帧数、推动冷却、记录被推信息（ID/坐标/方向）及插件指令、触发公共事件等扩展功能。
 
-Huanaiyka_ExclusiveArmor.js
-★为武器/防具添加角色、职业、等级、开关等专属限制
- * 多个标签必须同时满足AND关系。
-
 Huanaiyka_FaceImageSwitcher.js
 ★开关控制头像文件替换
  * 这个插件允许你在指定的一组开关满足条件时，将整个头像文件替换为另一个文件。
@@ -194,8 +191,8 @@ Huanaiyka_ItemListClickBlank.js
 
 Huanaiyka_ItemRenamer.js
 ★永久更改道具/武器/防具的名称和说明文
- * 本插件直接修改内存中的数据库条目，所有窗口自动显示修改后的名称和说明。
- * 修改记录保存在存档中，读档后自动恢复。
+ * 本插件动态修改内存中的数据库条目，所有窗口自动显示修改后的名称和说明。
+ * 修改记录随存档保存。
 
 Huanaiyka_MapFollowerCount.js
 ★改变地图上的跟随者数量
@@ -247,9 +244,14 @@ Huanaiyka_PerSave_for_TorigoyaMZ_Achievement2.js
  * 该补丁必须放在原插件 TorigoyaMZ_Achievement2.js 之后。
 
 Huanaiyka_PixelNearestFilter.js
-★像素点过滤增强，强制角色图片使用点过滤，避免边缘杂色
+★像素点过滤增强
  * 本插件通过强制所有角色图片使用“点过滤”渲染模式，
  * 防止线性过滤导致的像素混合，从而彻底解决角色边缘的杂色问题。
+
+Huanaiyka_PlayerControlEnemies.js
+★强制指定敌方操作
+ * 本插件允许玩家在战斗中手动控制敌人的行动，包括攻击、防御和使用技能。
+ * 适用于调试、测试或特殊的游戏机制设计。
 
 Huanaiyka_PointShop.js
 ★点数商店 使用变量代替默认货币购买物品
