@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>RPG Maker行走图转GIF - 一键批量 | 点击即下载</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2b2b2b;
+            color: #eee;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: #3c3c3c;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            color: #ffd966;
+        }
+        h2 { font-size: 1.3rem; border-left: 4px solid #ffaa44; padding-left: 12px; margin: 15px 0 10px 0; }
+        h3 {
+            margin-top: 0;
+            border-left: 4px solid #ffaa44;
+            padding-left: 12px;
+            font-size: 1.2rem;
+        }
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: stretch;
+        }
+        .panel {
+            background: #2a2a2a;
+            border-radius: 16px;
+            padding: 18px;
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+        .single-drop-zone {
+            transition: border-color 0.1s ease;
+            border: 2px solid transparent;
+            border-radius: 16px;
+        }
+        .single-drop-zone.drag-over {
+            border-color: #ffaa44;
+            background: #3a3a3a;
+            box-shadow: 0 0 0 1px #ffaa44 inset;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        input, select, button {
+            background: #1e1e1e;
+            border: 1px solid #5a5a5a;
+            color: #eee;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+        button {
+            background: #ffaa44;
+            color: #2b2b2b;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            border: none;
+            margin-top: 12px;
+        }
+        button:hover {
+            background: #ffcc66;
+            transform: scale(1.02);
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .checkbox-group input {
+            width: auto;
+            margin: 0;
+        }
+        .preview-area {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        canvas {
+            background: #4a4a4a;
+            box-shadow: 0 0 0 2px #666;
+            border-radius: 8px;
+            margin: 8px auto;
+            display: block;
+            max-width: 100%;
+        }
+        .status {
+            background: #00000080;
+            border-radius: 12px;
+            padding: 6px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+        .download-btn {
+            background: #2c7da0;
+            color: white;
+        }
+        .flex-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .param-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .double-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .role-grid {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: center;
+        }
+        .role-cell {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.1s;
+            border: 2px solid #5a5a5a;
+        }
+        .role-cell.selected {
+            background: #ffaa44;
+            border-color: white;
+            color: #1e1e1e;
+        }
+        .batch-area {
+            background: #2a2a2a;
+            border-radius: 16px;
+            padding: 18px;
+            margin-top: 20px;
+            transition: border-color 0.1s ease;
+            border: 2px solid transparent;
+        }
+        .batch-area.drag-over {
+            border-color: #61a0af;
+            background: #2f4a4a;
+            box-shadow: 0 0 0 1px #61a0af inset;
+        }
+        .file-list {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            margin: 10px 0;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            border-bottom: 1px solid #4a4a4a;
+            gap: 8px;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-name {
+            word-break: break-all;
+            flex: 1;
+        }
+        .remove-file-btn {
+            background: #9b4a4a;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            width: auto;
+            margin: 0;
+        }
+        .remove-file-btn:hover {
+            background: #c55a5a;
+            transform: none;
+        }
+        .clear-all-btn {
+            background: #6c5a6a;
+            margin-left: 8px;
+            width: auto;
+            padding: 4px 12px;
+        }
+        .batch-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .progress-bar {
+            background: #3c3c3c;
+            border-radius: 20px;
+            height: 20px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            background: #61a0af;
+            width: 0%;
+            height: 100%;
+            transition: width 0.2s;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        hr {
+            margin: 12px 0;
+            border-color: #5a5a5a;
+        }
+        .closable-notice {
+            background: #3a2a1f;
+            border-left: 4px solid #ffaa44;
+            padding: 8px 30px 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin: 10px 0;
+            color: #ffdd99;
+            position: relative;
+            display: block;
+        }
+        .closable-notice .close-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #ffdd99;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            width: 24px;
+            height: 24px;
+            line-height: 1;
+            font-weight: bold;
+        }
+        .closable-notice .close-btn:hover {
+            color: white;
+            background: none;
+            transform: translateY(-50%) scale(1.1);
+        }
+        .dir-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .dir-btn {
+            flex: 1;
+            background: #1e1e1e;
+            border: 2px solid #5a5a5a;
+            color: #eee;
+            font-size: 1rem;
+            padding: 6px 0;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: none;
+            margin-top: 0;
+        }
+        .dir-btn.active {
+            background: #ffaa44;
+            border-color: white;
+            color: #2b2b2b;
+        }
+        .dir-btn:hover {
+            background: #1e1e1e;
+            border-color: #5a5a5a;
+            color: #eee;
+            transform: none;
+        }
+        .dir-btn.active:hover {
+            background: #ffaa44;
+            border-color: white;
+            color: #2b2b2b;
+        }
+        .batch-action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .batch-action-buttons button {
+            width: 100%;
+            margin-top: 0;
+            background: #2c7da0;
+        }
+        .batch-action-buttons button.zip-mode {
+            background: #9b59b6;
+        }
+        .batch-action-buttons button.single-mode {
+            background: #5a6e7a;
+        }
+        #applyOffsetBtn {
+            background: transparent !important;
+            border: 1px solid #ffaa44 !important;
+            color: #ffaa44 !important;
+        }
+        #applyOffsetBtn:hover {
+            background: transparent !important;
+            transform: none !important;
+            border-color: #ffaa44 !important;
+            color: #ffaa44 !important;
+        }
+        .scale-module {
+            margin-top: 30px;
+            border-top: 2px solid #5a5a5a;
+            padding-top: 20px;
+        }
+        .scale-module h2 {
+            border-left-color: #61a0af;
+        }
+        .scale-module .panel {
+            background: #1f2a2a;
+        }
+        .scale-module .batch-area {
+            background: #1f2a2a;
+        }
+        .scale-module .file-list {
+            max-height: 150px;
+        }
+        .scale-module .flex-row {
+            align-items: stretch;
+        }
+        #scalePreviewCanvas {
+            background: #2a3a3a;
+        }
+        .drag-over-highlight {
+            border-color: #61a0af !important;
+            background: #2a3a3a !important;
+            box-shadow: 0 0 0 2px #61a0af inset;
+        }
+        .footer-notice {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #5a5a5a;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        (function(global) {
+            'use strict';
+            function parseGIF(arrayBuffer) {
+                const data = new Uint8Array(arrayBuffer);
+                const header = String.fromCharCode(data[0], data[1], data[2]);
+                if (header !== 'GIF') throw new Error('不是有效的GIF文件');
+                const width = data[6] | (data[7] << 8);
+                const height = data[8] | (data[9] << 8);
+                let ptr = 10;
+                const gct = !!(data[ptr] & 0x80);
+                const gctSize = gct ? 2 << (data[ptr] & 0x07) : 0;
+                ptr += 1; ptr += 1; ptr += 1;
+                if (gct) ptr += gctSize * 3;
+                const frames = [];
+                let delay = 100;
+                let transparentIndex = null;
+
+                while (ptr < data.length) {
+                    const blockType = data[ptr];
+                    ptr += 1;
+                    if (blockType === 0x2C) {
+                        const left = data[ptr] | (data[ptr+1] << 8);
+                        const top = data[ptr+2] | (data[ptr+3] << 8);
+                        const w = data[ptr+4] | (data[ptr+5] << 8);
+                        const h = data[ptr+6] | (data[ptr+7] << 8);
+                        ptr += 8;
+                        const lct = !!(data[ptr] & 0x80);
+                        const lctSize = lct ? 2 << (data[ptr] & 0x07) : 0;
+                        ptr += 1;
+                        let colorTable = null;
+                        if (lct) {
+                            colorTable = data.slice(ptr, ptr + lctSize * 3);
+                            ptr += lctSize * 3;
+                        }
+                        const minCodeSize = data[ptr];
+                        ptr += 1;
+                        const imageData = [];
+                        while (ptr < data.length) {
+                            const blockSize = data[ptr];
+                            ptr += 1;
+                            if (blockSize === 0) break;
+                            imageData.push(...data.slice(ptr, ptr + blockSize));
+                            ptr += blockSize;
+                        }
+                        const pixelCount = w * h;
+                        const dict = [];
+                        let codeSize = minCodeSize + 1;
+                        let clear = 1 << minCodeSize;
+                        let eoi = clear + 1;
+                        let dictSize = clear + 2;
+                        let bits = 0;
+                        let bitCount = 0;
+                        let prevCode = -1;
+                        for (let i = 0; i < clear; i++) dict.push([i]);
+                        dict.push([]); dict.push([]);
+                        const output = [];
+                        let code = 0;
+                        let readPos = 0;
+                        while (readPos < imageData.length * 8 && output.length < pixelCount) {
+                            while (bitCount < codeSize) {
+                                const byte = imageData[readPos >> 3] || 0;
+                                bits |= (byte << bitCount);
+                                bitCount += 8;
+                                readPos += 8;
+                            }
+                            code = bits & ((1 << codeSize) - 1);
+                            bits >>= codeSize;
+                            bitCount -= codeSize;
+                            if (code === clear) {
+                                codeSize = minCodeSize + 1;
+                                dict.length = clear + 2;
+                                dictSize = clear + 2;
+                                prevCode = -1;
+                                continue;
+                            } else if (code === eoi) break;
+                            let current = [];
+                            if (code < dict.length) current = dict[code].slice();
+                            else if (code === dictSize) {
+                                current = dict[prevCode].slice();
+                                if (current.length > 0) current.push(current[0]);
+                            } else break;
+                            output.push(...current);
+                            if (prevCode !== -1 && dictSize < 4096) {
+                                const prev = dict[prevCode].slice();
+                                if (prev.length > 0 && current.length > 0) {
+                                    prev.push(current[0]);
+                                    dict[dictSize] = prev;
+                                    dictSize++;
+                                    if (dictSize === (1 << codeSize) && codeSize < 12) codeSize++;
+                                }
+                            }
+                            prevCode = code;
+                        }
+                        const framePixels = new Uint8Array(width * height * 4);
+                        const useColorTable = lct ? colorTable : (gct ? data.slice(13, 13 + gctSize * 3) : null);
+                        if (!useColorTable) continue;
+                        for (let i = 0; i < Math.min(output.length, pixelCount); i++) {
+                            const idx = output[i];
+                            const px = (i % w) + left;
+                            const py = Math.floor(i / w) + top;
+                            if (px < width && py < height) {
+                                const pos = (py * width + px) * 4;
+                                if (transparentIndex !== null && idx === transparentIndex) {
+                                    framePixels[pos] = 0;
+                                    framePixels[pos+1] = 0;
+                                    framePixels[pos+2] = 0;
+                                    framePixels[pos+3] = 0;
+                                } else {
+                                    framePixels[pos] = useColorTable[idx * 3] || 0;
+                                    framePixels[pos+1] = useColorTable[idx * 3 + 1] || 0;
+                                    framePixels[pos+2] = useColorTable[idx * 3 + 2] || 0;
+                                    framePixels[pos+3] = 255;
+                                }
+                            }
+                        }
+                        frames.push({ pixels: framePixels, width, height, delay, disposal: 0 });
+                    } else if (blockType === 0x21) {
+                        const extType = data[ptr];
+                        ptr += 1;
+                        if (extType === 0xF9) {
+                            ptr += 1;
+                            const packed = data[ptr];
+                            const hasTransparent = !!(packed & 0x01);
+                            ptr += 1;
+                            let rawDelay = (data[ptr] | (data[ptr+1] << 8));
+                            delay = rawDelay * 10;
+                            ptr += 2;
+                            if (hasTransparent) {
+                                transparentIndex = data[ptr];
+                            } else {
+                                transparentIndex = null;
+                            }
+                            ptr += 1; ptr += 1;
+                        } else {
+                            while (ptr < data.length) {
+                                const blockSize = data[ptr];
+                                ptr += 1;
+                                if (blockSize === 0) break;
+                                ptr += blockSize;
+                            }
+                        }
+                    } else if (blockType === 0x3B) break;
+                    else break;
+                }
+                return { frames, width, height };
+            }
+            global.Gifuct = {
+                parseGIF,
+                decompressFrames: function(gifData) {
+                    return gifData.frames.map(f => ({ patch: f.pixels, delay: f.delay }));
+                }
+            };
+        })(window);
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>🎞️ RPG Maker行走图 → GIF动画</h1>
+
+    <div class="flex-row">
+        <div class="panel single-drop-zone" id="singleDropZone">
+            <h3>📂 上传文件</h3>
+            <input type="file" id="uploadFile" accept="image/png,image/jpeg,image/webp">
+            <div class="checkbox-group">
+                <input type="checkbox" id="autoDetect" checked>
+                <label style="margin:0">自动识别 ($开头 → 3x4 , 其他 → 12x8)</label>
+            </div>
+            <label>🔧 手动覆盖 (关闭自动识别时生效)</label>
+            <div class="double-input-row">
+                <input type="number" id="cols" placeholder="列数" value="12" step="1" min="1">
+                <input type="number" id="rows" placeholder="行数" value="8" step="1" min="1">
+            </div>
+            <label>📐 单帧尺寸 (宽 x 高)</label>
+            <div class="double-input-row">
+                <input type="number" id="frameW" placeholder="宽" value="48" step="1">
+                <input type="number" id="frameH" placeholder="高" value="48" step="1">
+            </div>
+            <div class="param-row">
+                <label>🧩 每个角色占列数</label>
+                <input type="number" id="colsPerRole" value="3" step="1" min="1">
+            </div>
+            <div class="param-row">
+                <label>🧩 每个角色占行数</label>
+                <input type="number" id="rowsPerRole" value="4" step="1" min="1">
+            </div>
+            <div class="role-panel-inner">
+                <h3>🎯 选择角色 </h3>
+                <div id="roleGridContainer" style="overflow-x: auto; min-height: 100px; text-align: center;">
+                    <p style="color: #aaa;">上传图片后自动显示网格</p>
+                </div>
+                <div class="param-row" style="margin-top: 8px;">
+                    <label>📌 偏移 (列, 行):</label>
+                    <input type="number" id="roleColOffset" value="0" step="1" min="0" style="width: 70px;">
+                    <input type="number" id="roleRowOffset" value="0" step="1" min="0" style="width: 70px;">
+                    <button id="applyOffsetBtn" style="width: auto; margin-top: 0;">应用</button>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button id="exportAllRolesZipBtn" style="background:#9b59b6;">📦 打包下载所有角色GIF</button>
+                <button id="exportAllRolesSingleBtn" style="background:#5a6e7a;">🎞️ 逐个下载所有角色GIF</button>
+            </div>
+        </div>
+
+        <div class="panel" id="rightPanelDropZone" style="border: 2px solid transparent; border-radius: 16px; transition: 0.1s;">
+            <div class="right-panel-content">
+                <h3>🧭 方向 & 帧选择</h3>
+                <div class="dir-buttons" id="dirButtons">
+                    <button data-dir="down" class="dir-btn active">▼ 下</button>
+                    <button data-dir="left" class="dir-btn">◀ 左</button>
+                    <button data-dir="up" class="dir-btn">▲ 上</button>
+                    <button data-dir="right" class="dir-btn">▶ 右</button>
+                </div>
+                <label>🎨 每方向帧索引 (如果只输入"1"，并选择上方全部方向，可制作转向GIF)</label>
+                <input type="text" id="frameIndices" value="0,1,2,1" placeholder="0,1,2,1">
+                <div class="gif-params" style="display:flex; gap:10px; margin:12px 0;">
+                    <div><label>🎬 帧延迟 (ms)</label><input type="number" id="delay" value="240" step="10"></div>
+                    <div><label>🔄 循环次数（默认无限）</label><input type="number" id="repeat" value="0" step="1" min="0"></div>
+                    <div><label>⚙️ 质量 (默认无损)</label><input type="number" id="quality" value="1" step="1" min="1" max="30"></div>
+                </div>
+                <div class="flex-buttons">
+                    <button id="previewBtn">▶️ 预览动画</button>
+                    <button id="stopPreviewBtn">⏹️ 停止预览</button>
+                </div>
+                <button id="generateAndDownloadBtn" class="download-btn" style="background:#61a0af;">⬇️ 下载当前角色GIF</button>
+                <div class="preview-area">
+                    <h3>🖼️ 预览 / 结果</h3>
+                    <canvas id="previewCanvas" width="200" height="200" style="width:auto; height:auto; max-width:100%"></canvas>
+                    <div id="statusMsg" class="status">就绪。批量区点击按钮直接处理，无需额外"开始"。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量上传区 -->
+    <div class="batch-area" id="batchDropZone">
+        <h2>📦 批量处理 </h2>
+        <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
+            <div style="flex:2">
+                <label>📎 选择多个行走图</label>
+                <input type="file" id="batchUploadInput" multiple accept="image/png,image/jpeg,image/webp">
+            </div>
+            <div style="flex:1">
+                <div class="batch-action-buttons">
+                    <button id="batchZipDirectBtn" class="zip-mode">📦 打包下载</button>
+                    <button id="batchSingleDirectBtn" class="single-mode">🎞️ 逐个下载</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="batch-header">
+            <span style="font-size:0.85rem;">📄 待处理文件列表 (<span id="batchFileCount">0</span> 个)</span>
+            <button id="clearAllFilesBtn" class="clear-all-btn" style="background:#6c5a6a;">🗑️ 清空所有</button>
+        </div>
+        <div id="batchFileList" class="file-list">
+            <div style="color:#aaa; text-align:center;">暂无文件，请选择或拖拽图片到本区域</div>
+        </div>
+        <div id="batchProgressArea" style="display:none;">
+            <div class="progress-bar"><div id="batchProgressFill" class="progress-fill"></div></div>
+            <div id="batchStatusText" class="status">批量处理中...</div>
+        </div>
+    </div>
+
+    <!-- ========== 独立模块：物理放大工具 ========== -->
+    <div class="scale-module">
+        <h2>🔍 物理放大工具 (支持 GIF 与 静态单图)</h2>
+        <div class="flex-row">
+            <div class="panel" id="scaleSingleDropZone" style="border: 2px solid transparent; border-radius: 16px; transition: 0.1s;">
+                <h3>📤 上传图片 / GIF</h3>
+                <input type="file" id="scaleUpload" accept="image/gif,image/png,image/jpeg,image/webp">
+                <div style="margin: 12px 0;">
+                    <label>🔢 放大倍数 (整数 ≥2)</label>
+                    <div class="dir-buttons" id="scaleBtnGroup">
+                        <button data-scale="2" class="dir-btn">x2</button>
+                        <button data-scale="4" class="dir-btn">x4</button>
+                        <button data-scale="8" class="dir-btn active">x8</button>
+                        <button data-scale="16" class="dir-btn">x16</button>
+                        <button data-scale="custom" class="dir-btn">自定义</button>
+                    </div>
+                    <div id="customScaleContainer" style="display:none; margin-top:8px;">
+                        <input type="number" id="scaleFactor" value="8" min="2" step="1" placeholder="输入放大倍数">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button id="scaleSingleBtn" style="background:#2c7da0; flex:1;">⬇️ 放大并下载此图</button>
+                    <button id="scalePreviewBtn" style="background:#5a6e7a; flex:1;">▶️ 预览放大效果</button>
+                </div>
+                <div class="preview-area" style="margin-top:12px;">
+                    <canvas id="scalePreviewCanvas" width="200" height="200" style="width:auto; height:auto; max-width:100%; background:#2a3a3a;"></canvas>
+                    <div id="scaleStatus" class="status">等待上传图片/GIF</div>
+                </div>
+            </div>
+            <div class="panel" id="scaleBatchDropZone" style="border: 2px solid transparent; border-radius: 16px; transition: 0.1s;">
+                <h3>📦 批量放大 </h3>
+                <input type="file" id="scaleBatchInput" multiple accept="image/gif,image/png,image/jpeg,image/webp">
+                
+                <div class="param-row" style="margin-top:10px;">
+                    <label style="margin:0; white-space:nowrap;">🎯 导出单帧序号 (从1开始):</label>
+                    <input type="number" id="exportFrameIndexInput" value="2" min="1" step="1" style="width: 80px;">
+                </div>
+
+                <div class="batch-header" style="margin-top:8px;">
+                    <span>已添加 <span id="scaleBatchCount">0</span> 个文件</span>
+                    <button id="scaleClearAllBtn" class="clear-all-btn" style="background:#6c5a6a;">🗑️ 清空</button>
+                </div>
+                <div id="scaleBatchFileList" class="file-list" style="max-height:120px;">
+                    <div style="color:#aaa; text-align:center;">暂无文件</div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                    <button id="scaleBatchZipBtn" style="background:#9b59b6; flex:1; min-width: 120px;">📦 打包下载放大图</button>
+                    <button id="scaleBatchSingleBtn" style="background:#5a6e7a; flex:1; min-width: 120px;">🎞️ 逐个下载</button>
+                    <button id="scaleBatchTargetFrameBtn" style="background:#2c7da0; flex:1; min-width: 120px;">🖼️ 导出单图透明帧</button>
+                </div>
+                <div id="scaleBatchProgress" style="display:none;">
+                    <div class="progress-bar"><div id="scaleBatchFill" class="progress-fill"></div></div>
+                    <div id="scaleBatchStatus" class="status">处理中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- 底部通知 -->
+<div class="footer-notice">
+    <div id="footerZipNotice" class="closable-notice">
+        <button class="close-btn" id="footerCloseNoticeBtn" title="关闭提示">✕</button>
+        <div class="notice-header">
+            <span class="notice-icon">💡</span>
+            <span class="notice-title">下载文件被 Windows 阻止打开怎么办？</span>
+        </div>
+        <div class="notice-content">
+            <p>右键点击下载的文件 → <strong>属性</strong> → 勾选 <strong>“解除锁定”</strong> → 确定。</p>
+            <p>若下载的是 <code>.zip</code> 格式，请<strong>先对压缩包解除锁定再解压</strong>，解压出的所有文件即可正常打开。</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('uploadFile');
+    const autoDetectCheck = document.getElementById('autoDetect');
+    const colsInput = document.getElementById('cols');
+    const rowsInput = document.getElementById('rows');
+    const frameWInput = document.getElementById('frameW');
+    const frameHInput = document.getElementById('frameH');
+    const colsPerRoleInput = document.getElementById('colsPerRole');
+    const rowsPerRoleInput = document.getElementById('rowsPerRole');
+    const delayInput = document.getElementById('delay');
+    const repeatInput = document.getElementById('repeat');
+    const qualityInput = document.getElementById('quality');
+    const frameIndicesInput = document.getElementById('frameIndices');
+    const previewBtn = document.getElementById('previewBtn');
+    const stopPreviewBtn = document.getElementById('stopPreviewBtn');
+    const generateAndDownloadBtn = document.getElementById('generateAndDownloadBtn');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const statusDiv = document.getElementById('statusMsg');
+    const roleColOffsetInput = document.getElementById('roleColOffset');
+    const roleRowOffsetInput = document.getElementById('roleRowOffset');
+    const applyOffsetBtn = document.getElementById('applyOffsetBtn');
+    const roleGridContainer = document.getElementById('roleGridContainer');
+    const exportAllRolesZipBtn = document.getElementById('exportAllRolesZipBtn');
+    const exportAllRolesSingleBtn = document.getElementById('exportAllRolesSingleBtn');
+    
+    const batchUploadInput = document.getElementById('batchUploadInput');
+    const batchZipDirectBtn = document.getElementById('batchZipDirectBtn');
+    const batchSingleDirectBtn = document.getElementById('batchSingleDirectBtn');
+    const batchFileListDiv = document.getElementById('batchFileList');
+    const batchProgressArea = document.getElementById('batchProgressArea');
+    const batchProgressFill = document.getElementById('batchProgressFill');
+    const batchStatusText = document.getElementById('batchStatusText');
+    const clearAllFilesBtn = document.getElementById('clearAllFilesBtn');
+    const batchFileCountSpan = document.getElementById('batchFileCount');
+    
+    const singleDropZone = document.getElementById('singleDropZone');
+    const batchDropZone = document.getElementById('batchDropZone');
+    const rightPanelDropZone = document.getElementById('rightPanelDropZone');
+    
+    const dirButtons = document.querySelectorAll('#dirButtons .dir-btn');
+    const dirMap = { down: 0, left: 1, up: 3, right: 2 };
+    let activeDirs = { down: true, left: false, up: false, right: false };
+
+    let originalImage = null;
+    let previewInterval = null;
+    let currentFileName = "walk";
+    let gifWorkerUrl = null;
+    let batchFiles = [];
+
+    const footerZipNotice = document.getElementById('footerZipNotice');
+    const footerCloseNoticeBtn = document.getElementById('footerCloseNoticeBtn');
+    footerCloseNoticeBtn.addEventListener('click', () => { footerZipNotice.style.display = 'none'; });
+
+    function showZipNotice() {
+        footerZipNotice.style.display = 'block';
+    }
+
+    function isFileDuplicate(newFile, existingFiles) {
+        return existingFiles.some(f => f.name === newFile.name && f.size === newFile.size && f.lastModified === newFile.lastModified);
+    }
+
+    function addFilesToBatch(files) {
+        let addedCount = 0;
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) {
+                setStatus(`跳过非图片: ${file.name}`, true);
+                continue;
+            }
+            if (!isFileDuplicate(file, batchFiles)) {
+                batchFiles.push(file);
+                addedCount++;
+            } else {
+                setStatus(`已存在相同文件: ${file.name}，未重复添加`, false);
+            }
+        }
+        if (addedCount > 0) {
+            renderBatchFileList();
+            setStatus(`✅ 批量区已添加 ${addedCount} 个新文件，共 ${batchFiles.length} 个`, false);
+        } else if (files.length > 0) {
+            setStatus(`所有文件均已存在列表中，未重复添加`, false);
+        }
+    }
+
+    function removeFileAtIndex(index) {
+        if (index >= 0 && index < batchFiles.length) {
+            const removed = batchFiles.splice(index, 1);
+            renderBatchFileList();
+            setStatus(`已移除: ${removed[0].name}`, false);
+        }
+    }
+
+    function clearAllFiles() {
+        if (batchFiles.length > 0) {
+            batchFiles = [];
+            renderBatchFileList();
+            setStatus(`已清空所有批量文件`, false);
+        }
+    }
+
+    function renderBatchFileList() {
+        batchFileCountSpan.innerText = batchFiles.length;
+        if (batchFiles.length === 0) {
+            batchFileListDiv.innerHTML = '<div style="color:#aaa; text-align:center;">暂无文件，请选择或拖拽图片到本区域</div>';
+            return;
+        }
+        let html = '';
+        batchFiles.forEach((file, idx) => {
+            const sizeKB = (file.size / 1024).toFixed(1);
+            html += `
+                <div class="file-item">
+                    <span class="file-name">📄 ${escapeHtml(file.name)} (${sizeKB} KB)</span>
+                    <button class="remove-file-btn" data-index="${idx}">移除</button>
+                </div>
+            `;
+        });
+        batchFileListDiv.innerHTML = html;
+        document.querySelectorAll('.remove-file-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.index, 10);
+                if (!isNaN(idx)) removeFileAtIndex(idx);
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function getBaseSelectedRows() {
+        const order = ['down', 'left', 'up', 'right'];
+        const baseRows = [];
+        for (const dir of order) {
+            if (activeDirs[dir]) {
+                baseRows.push(dirMap[dir]);
+            }
+        }
+        return baseRows;
+    }
+
+    async function handleSingleImageDrop(files) {
+        if (!files || files.length === 0) return;
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) {
+            setStatus('拖拽内容无有效图片', true);
+            return;
+        }
+        const firstFile = imageFiles[0];
+        setStatus(`单图区: 加载 ${firstFile.name} ...`);
+        try {
+            const img = await loadImageFromFile(firstFile);
+            originalImage = img;
+            currentFileName = firstFile.name;
+            if (autoDetectCheck.checked) {
+                const { cols, rows, colsPerRole, rowsPerRole } = detectGridFromFilename(firstFile.name);
+                colsInput.value = cols;
+                rowsInput.value = rows;
+                colsPerRoleInput.value = colsPerRole;
+                rowsPerRoleInput.value = rowsPerRole;
+                if (firstFile.name.startsWith('$')) { frameWInput.value = 96; frameHInput.value = 96; }
+                else { frameWInput.value = 48; frameHInput.value = 48; }
+                setStatus(`自动识别: ${cols}x${rows} 网格`);
+            }
+            stopPreview();
+            roleColOffsetInput.value = 0;
+            roleRowOffsetInput.value = 0;
+            await buildRoleGrid();
+            const ctx = previewCanvas.getContext('2d');
+            previewCanvas.width = Math.min(300, img.width);
+            previewCanvas.height = previewCanvas.width * (img.height/img.width);
+            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            ctx.drawImage(img, 0, 0, previewCanvas.width, previewCanvas.height);
+            setStatus(`单图加载成功: ${img.width}x${img.height}`);
+        } catch(err) {
+            setStatus(`单图加载失败: ${err.message}`, true);
+        }
+    }
+
+    function loadImageFromFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function getWorkerScriptUrl() {
+        if (gifWorkerUrl) return gifWorkerUrl;
+        try {
+            const response = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+            if (!response.ok) throw new Error('worker fetch fail');
+            const code = await response.text();
+            const blob = new Blob([code], { type: 'application/javascript' });
+            gifWorkerUrl = URL.createObjectURL(blob);
+            return gifWorkerUrl;
+        } catch(e) {
+            console.error(e);
+            throw new Error('无法加载gif.worker.js');
+        }
+    }
+
+    function setStatus(msg, isError = false) {
+        statusDiv.innerHTML = msg;
+        statusDiv.style.color = isError ? '#ff8888' : '#aaffaa';
+    }
+
+    function detectGridFromFilename(filename) {
+        if (!filename) return { cols: 12, rows: 8, colsPerRole: 3, rowsPerRole: 4 };
+        if (filename.startsWith('$')) return { cols: 3, rows: 4, colsPerRole: 3, rowsPerRole: 1 };
+        return { cols: 12, rows: 8, colsPerRole: 3, rowsPerRole: 4 };
+    }
+
+    function parseFrameIndices(str) {
+        return str.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);
+    }
+
+    function getSelectedRowsOrdered() {
+        const baseRows = getBaseSelectedRows();
+        const rowOffset = parseInt(roleRowOffsetInput.value, 10) || 0;
+        const rowsPerRole = parseInt(rowsPerRoleInput.value, 10) || 4;
+        return baseRows.map(r => r + rowOffset * rowsPerRole);
+    }
+
+    function getColOffset() {
+        const colOffset = parseInt(roleColOffsetInput.value, 10) || 0;
+        const colsPerRole = parseInt(colsPerRoleInput.value, 10) || 12;
+        return colOffset * colsPerRole;
+    }
+
+    function extractFramesFromImage(img, cols, rows, frameW, frameH) {
+        const frames = [];
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = frameW;
+        canvas.height = frameH;
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const sx = col * frameW;
+                const sy = row * frameH;
+                if (sx + frameW <= img.width && sy + frameH <= img.height) {
+                    ctx.clearRect(0, 0, frameW, frameH);
+                    ctx.drawImage(img, sx, sy, frameW, frameH, 0, 0, frameW, frameH);
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = frameW;
+                    frameCanvas.height = frameH;
+                    const fCtx = frameCanvas.getContext('2d');
+                    fCtx.clearRect(0, 0, frameW, frameH);
+                    fCtx.drawImage(canvas, 0, 0);
+                    frames.push({ canvas: frameCanvas, row, col });
+                }
+            }
+        }
+        return frames;
+    }
+
+    function buildAnimationSequence(allFrames, cols, selectedRows, frameIndices, colOffset) {
+        const sequence = [];
+        for (const rowIdx of selectedRows) {
+            for (const frameIdx of frameIndices) {
+                const targetCol = colOffset + frameIdx;
+                const targetIndex = rowIdx * cols + targetCol;
+                if (targetIndex >= 0 && targetIndex < allFrames.length) {
+                    sequence.push(allFrames[targetIndex]);
+                }
+            }
+        }
+        return sequence;
+    }
+
+    function stopPreview() {
+        if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+    }
+
+    function startPreview() {
+        if (!originalImage) { setStatus('请先上传行走图', true); return false; }
+        stopPreview();
+        let cols = parseInt(colsInput.value, 10);
+        let rows = parseInt(rowsInput.value, 10);
+        let frameW = parseInt(frameWInput.value, 10);
+        let frameH = parseInt(frameHInput.value, 10);
+        const delay = parseInt(delayInput.value, 10);
+        if (isNaN(cols) || isNaN(rows) || isNaN(frameW) || isNaN(frameH)) { setStatus('参数无效', true); return false; }
+        const allFrames = extractFramesFromImage(originalImage, cols, rows, frameW, frameH);
+        if (allFrames.length === 0) { setStatus('没有切割到任何帧', true); return false; }
+        const selectedRows = getSelectedRowsOrdered();
+        if (selectedRows.length === 0) { setStatus('请至少选择一个方向', true); return false; }
+        const frameIndices = parseFrameIndices(frameIndicesInput.value);
+        if (frameIndices.length === 0) { setStatus('请指定有效的帧索引', true); return false; }
+        const colOffset = getColOffset();
+        const sequence = buildAnimationSequence(allFrames, cols, selectedRows, frameIndices, colOffset);
+        if (sequence.length === 0) { setStatus('没有有效的动画帧', true); return false; }
+        let idx = 0;
+        previewCanvas.width = frameW;
+        previewCanvas.height = frameH;
+        const ctx = previewCanvas.getContext('2d');
+        ctx.clearRect(0, 0, frameW, frameH);
+        previewInterval = setInterval(() => {
+            const frameObj = sequence[idx % sequence.length];
+            ctx.clearRect(0, 0, frameW, frameH);
+            ctx.drawImage(frameObj.canvas, 0, 0);
+            idx++;
+        }, delay);
+        setStatus(`预览中 → 共 ${sequence.length} 帧`);
+        return true;
+    }
+
+    async function generateGifForRole(img, roleCol, roleRow, params) {
+        const { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows } = params;
+        const colOffset = roleCol * colsPerRole;
+        const rowOffset = roleRow * rowsPerRole;
+        const allFrames = extractFramesFromImage(img, cols, rows, frameW, frameH);
+        if (allFrames.length === 0) throw new Error('帧切割失败');
+        const finalRows = baseDirectionRows.map(r => r + rowOffset);
+        const sequence = buildAnimationSequence(allFrames, cols, finalRows, frameIndices, colOffset);
+        if (sequence.length === 0) throw new Error('动画序列为空');
+        const workerUrl = await getWorkerScriptUrl();
+        return new Promise((resolve, reject) => {
+            const gif = new GIF({
+                workers: 2,
+                quality,
+                width: frameW,
+                height: frameH,
+                repeat,
+                workerScript: workerUrl,
+                transparent: 0x00FF00
+            });
+            for (let i = 0; i < sequence.length; i++) {
+                const srcCanvas = sequence[i].canvas;
+                const srcCtx = srcCanvas.getContext('2d');
+                const imgData = srcCtx.getImageData(0, 0, frameW, frameH);
+                const data = imgData.data;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = frameW;
+                tempCanvas.height = frameH;
+                const tempCtx = tempCanvas.getContext('2d');
+                const newImgData = tempCtx.createImageData(frameW, frameH);
+                const newData = newImgData.data;
+
+                for (let px = 0; px < data.length; px += 4) {
+                    let r = data[px];
+                    let g = data[px + 1];
+                    let b = data[px + 2];
+                    let a = data[px + 3];
+
+                    if (a < 128) {
+                        newData[px] = 0;
+                        newData[px + 1] = 255;
+                        newData[px + 2] = 0;
+                        newData[px + 3] = 255;
+                    } else {
+                        if (r === 0 && g === 255 && b === 0) {
+                            g = 254;
+                        }
+                        newData[px] = r;
+                        newData[px + 1] = g;
+                        newData[px + 2] = b;
+                        newData[px + 3] = 255;
+                    }
+                }
+                tempCtx.putImageData(newImgData, 0, 0);
+                gif.addFrame(tempCanvas, { delay, copy: true, dispose: 2 });
+            }
+            gif.on('finished', (blob) => resolve(blob));
+            gif.on('error', (err) => reject(err));
+            gif.render();
+        });
+    }
+
+    function getAllRoleOffsets(cols, rows, colsPerRole, rowsPerRole) {
+        const roleCols = Math.floor(cols / colsPerRole);
+        const roleRows = Math.floor(rows / rowsPerRole);
+        const offsets = [];
+        for (let r = 0; r < roleRows; r++) {
+            for (let c = 0; c < roleCols; c++) {
+                offsets.push({ col: c, row: r });
+            }
+        }
+        return offsets;
+    }
+
+    function getCurrentImageParamsForAll() {
+        const cols = parseInt(colsInput.value, 10);
+        const rows = parseInt(rowsInput.value, 10);
+        const frameW = parseInt(frameWInput.value, 10);
+        const frameH = parseInt(frameHInput.value, 10);
+        const colsPerRole = parseInt(colsPerRoleInput.value, 10);
+        const rowsPerRole = parseInt(rowsPerRoleInput.value, 10);
+        const delay = parseInt(delayInput.value, 10);
+        const repeat = parseInt(repeatInput.value, 10);
+        const quality = parseInt(qualityInput.value, 10);
+        const frameIndices = parseFrameIndices(frameIndicesInput.value);
+        const baseDirectionRows = getBaseSelectedRows();
+        return { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows };
+    }
+
+    async function generateAndDownloadSingle() {
+        if (!originalImage) { setStatus('请先上传行走图', true); return; }
+        stopPreview();
+        setStatus('生成当前角色GIF...');
+        const params = getCurrentImageParamsForAll();
+        const selectedRows = getSelectedRowsOrdered();
+        if (selectedRows.length === 0) { setStatus('请至少选择一个方向', true); return; }
+        const frameIndices = parseFrameIndices(frameIndicesInput.value);
+        if (frameIndices.length === 0) { setStatus('帧索引无效', true); return; }
+        const colOff = getColOffset();
+        const allFrames = extractFramesFromImage(originalImage, params.cols, params.rows, params.frameW, params.frameH);
+        if (allFrames.length === 0) { setStatus('切割失败', true); return; }
+        const sequence = buildAnimationSequence(allFrames, params.cols, selectedRows, frameIndices, colOff);
+        if (sequence.length === 0) { setStatus('动画序列为空', true); return; }
+        const workerUrl = await getWorkerScriptUrl();
+        const gif = new GIF({
+            workers: 2,
+            quality: params.quality,
+            width: params.frameW,
+            height: params.frameH,
+            repeat: params.repeat,
+            workerScript: workerUrl,
+            transparent: 0x00FF00
+        });
+        for (let f of sequence) {
+            const srcCanvas = f.canvas;
+            const srcCtx = srcCanvas.getContext('2d');
+            const imgData = srcCtx.getImageData(0, 0, params.frameW, params.frameH);
+            const data = imgData.data;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = params.frameW;
+            tempCanvas.height = params.frameH;
+            const tempCtx = tempCanvas.getContext('2d');
+            const newImgData = tempCtx.createImageData(params.frameW, params.frameH);
+            const newData = newImgData.data;
+
+            for (let px = 0; px < data.length; px += 4) {
+                let r = data[px];
+                let g = data[px + 1];
+                let b = data[px + 2];
+                let a = data[px + 3];
+
+                if (a < 128) {
+                    newData[px] = 0;
+                    newData[px + 1] = 255;
+                    newData[px + 2] = 0;
+                    newData[px + 3] = 255;
+                } else {
+                    if (r === 0 && g === 255 && b === 0) {
+                        g = 254;
+                    }
+                    newData[px] = r;
+                    newData[px + 1] = g;
+                    newData[px + 2] = b;
+                    newData[px + 3] = 255;
+                }
+            }
+            tempCtx.putImageData(newImgData, 0, 0);
+            gif.addFrame(tempCanvas, { delay: params.delay, copy: true, dispose: 2 });
+        }
+        gif.on('finished', (blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentFileName.replace(/\.[^/.]+$/, '')}_角色_${roleColOffsetInput.value}_${roleRowOffsetInput.value}.gif`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setStatus(`✅ 已下载 GIF`);
+        });
+        gif.render();
+    }
+
+    async function exportAllRolesAsZip() {
+        if (!originalImage) { setStatus('请先上传行走图', true); return; }
+        setStatus('⏳ 打包所有角色ZIP...');
+        const params = getCurrentImageParamsForAll();
+        const roleOffsets = getAllRoleOffsets(params.cols, params.rows, params.colsPerRole, params.rowsPerRole);
+        if (roleOffsets.length === 0) { setStatus('没有完整角色', true); return; }
+        const zip = new JSZip();
+        const baseName = currentFileName.replace(/\.[^/.]+$/, '');
+        let successCount = 0;
+        for (let { col, row } of roleOffsets) {
+            try {
+                const blob = await generateGifForRole(originalImage, col, row, params);
+                zip.file(`${baseName}_角色_${col}_${row}.gif`, blob);
+                successCount++;
+            } catch(e) { console.warn(e); }
+        }
+        if (successCount === 0) { setStatus('未生成任何角色', true); return; }
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${baseName}_全角色GIFs.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus(`✅ 已导出 ${successCount} 个角色GIF，打包ZIP下载完成。`);
+        showZipNotice();
+    }
+
+    async function exportAllRolesAsSingle() {
+        if (!originalImage) { setStatus('请先上传行走图', true); return; }
+        setStatus('逐个下载所有角色...');
+        const params = getCurrentImageParamsForAll();
+        const roleOffsets = getAllRoleOffsets(params.cols, params.rows, params.colsPerRole, params.rowsPerRole);
+        const baseName = currentFileName.replace(/\.[^/.]+$/, '');
+        let successCount = 0;
+        for (let { col, row } of roleOffsets) {
+            try {
+                const blob = await generateGifForRole(originalImage, col, row, params);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${baseName}_角色_${col}_${row}.gif`;
+                a.click();
+                URL.revokeObjectURL(url);
+                successCount++;
+                await new Promise(r => setTimeout(r, 200));
+            } catch(e) { console.warn(e); }
+        }
+        setStatus(`✅ 已触发 ${successCount} 次下载，如果部分被浏览器拦截，请允许此页面的多个下载权限。`);
+    }
+
+    async function batchProcess(mode) {
+        if (batchFiles.length === 0) {
+            alert('请先添加批量文件（选择或拖拽图片）');
+            return;
+        }
+        batchZipDirectBtn.disabled = true;
+        batchSingleDirectBtn.disabled = true;
+        batchProgressArea.style.display = 'block';
+        batchProgressFill.style.width = '0%';
+        batchStatusText.innerText = '准备处理...';
+        
+        const totalFiles = batchFiles.length;
+        const commonParams = getCurrentImageParamsForAll();
+        const frameIndices = commonParams.frameIndices;
+        if (frameIndices.length === 0) {
+            batchStatusText.innerText = '帧索引无效，请检查上方帧索引输入';
+            batchProgressArea.style.display = 'none';
+            batchZipDirectBtn.disabled = false;
+            batchSingleDirectBtn.disabled = false;
+            return;
+        }
+        
+        let masterZip = null;
+        if (mode === 'zip') masterZip = new JSZip();
+        let totalRolesSuccess = 0;
+        let anyFileProcessed = false;
+        
+        for (let fIdx = 0; fIdx < batchFiles.length; fIdx++) {
+            const file = batchFiles[fIdx];
+            batchStatusText.innerText = `处理文件 ${fIdx+1}/${totalFiles}: ${file.name}`;
+            batchProgressFill.style.width = `${(fIdx / totalFiles) * 100}%`;
+            try {
+                const img = await loadImageFromFile(file);
+                const { cols, rows, colsPerRole, rowsPerRole } = detectGridFromFilename(file.name);
+                let frameW = 48, frameH = 48;
+                if (file.name.startsWith('$')) { frameW = 96; frameH = 96; }
+                const roleOffsets = getAllRoleOffsets(cols, rows, colsPerRole, rowsPerRole);
+                if (roleOffsets.length === 0) continue;
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                let fileSuccess = 0;
+                for (let { col, row } of roleOffsets) {
+                    try {
+                        const paramsForThis = {
+                            cols, rows, frameW, frameH, colsPerRole, rowsPerRole,
+                            delay: commonParams.delay,
+                            repeat: commonParams.repeat,
+                            quality: commonParams.quality,
+                            frameIndices: commonParams.frameIndices,
+                            baseDirectionRows: commonParams.baseDirectionRows
+                        };
+                        const blob = await generateGifForRole(img, col, row, paramsForThis);
+                        const filename = `${baseName}_角色_${col}_${row}.gif`;
+                        if (mode === 'zip') {
+                            masterZip.file(filename, blob);
+                        } else {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            await new Promise(r => setTimeout(r, 200));
+                        }
+                        totalRolesSuccess++;
+                        fileSuccess++;
+                        anyFileProcessed = true;
+                    } catch(e) { console.warn(`${file.name} 角色(${col},${row})失败`, e); }
+                }
+                if (fileSuccess === 0) {
+                    setStatus(`警告: ${file.name} 未生成任何GIF，请检查参数`, true);
+                }
+            } catch(err) {
+                console.warn(`文件加载失败 ${file.name}`, err);
+                setStatus(`文件 ${file.name} 加载失败: ${err.message}`, true);
+            }
+        }
+        
+        if (!anyFileProcessed) {
+            batchStatusText.innerText = '错误: 没有成功生成任何GIF，请检查图片格式和参数';
+            batchProgressArea.style.display = 'none';
+            batchZipDirectBtn.disabled = false;
+            batchSingleDirectBtn.disabled = false;
+            return;
+        }
+        
+        if (mode === 'zip' && masterZip) {
+            batchStatusText.innerText = `打包ZIP中 (${totalRolesSuccess} 个GIF)...`;
+            try {
+                const finalZipBlob = await masterZip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(finalZipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `批量行走图_全角色_${Date.now()}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                batchStatusText.innerText = `✅ 已导出 ${totalRolesSuccess} 个角色GIF，打包ZIP下载完成。`;
+                showZipNotice();
+            } catch(e) {
+                batchStatusText.innerText = `ZIP生成失败: ${e.message}`;
+                console.error(e);
+            }
+        } else if (mode === 'single') {
+            batchStatusText.innerText = `✅ 已触发 ${totalRolesSuccess} 次下载，如果部分被浏览器拦截，请允许此页面的多个下载权限。`;
+        }
+        
+        setTimeout(() => {
+            batchProgressArea.style.display = 'none';
+            batchZipDirectBtn.disabled = false;
+            batchSingleDirectBtn.disabled = false;
+        }, 3000);
+    }
+
+    async function buildRoleGrid() {
+        if (!originalImage) return;
+        const cols = parseInt(colsInput.value,10), rows = parseInt(rowsInput.value,10), frameW = parseInt(frameWInput.value,10), frameH = parseInt(frameHInput.value,10), colsPerRole = parseInt(colsPerRoleInput.value,10), rowsPerRole = parseInt(rowsPerRoleInput.value,10);
+        if (isNaN(cols+rows+frameW+frameH+colsPerRole+rowsPerRole)) return;
+        const allFrames = extractFramesFromImage(originalImage, cols, rows, frameW, frameH);
+        if (allFrames.length === 0) { roleGridContainer.innerHTML = '<p>无法切割帧</p>'; return; }
+        const roleCols = Math.floor(cols / colsPerRole), roleRows = Math.floor(rows / rowsPerRole);
+        if (roleCols === 0 || roleRows === 0) { roleGridContainer.innerHTML = `<p>无完整角色</p>`; return; }
+        let html = `<div class="role-grid" style="grid-template-columns: repeat(${roleCols}, minmax(70px, 90px));">`;
+        for (let r = 0; r < roleRows; r++) {
+            for (let c = 0; c < roleCols; c++) {
+                let sampleFrame = null;
+                for (let fr=0; fr<rowsPerRole && !sampleFrame; fr++)
+                    for (let fc=0; fc<colsPerRole && !sampleFrame; fc++) {
+                        const idx = ((r*rowsPerRole)+fr)*cols + ((c*colsPerRole)+fc);
+                        if (idx < allFrames.length) sampleFrame = allFrames[idx];
+                    }
+                if (!sampleFrame) continue;
+                const thumbCanvas = document.createElement('canvas');
+                thumbCanvas.width = frameW; thumbCanvas.height = frameH;
+                const tCtx = thumbCanvas.getContext('2d');
+                tCtx.clearRect(0, 0, frameW, frameH);
+                tCtx.drawImage(sampleFrame.canvas,0,0);
+                const dataURL = thumbCanvas.toDataURL();
+                const isSelected = (parseInt(roleColOffsetInput.value)===c && parseInt(roleRowOffsetInput.value)===r);
+                html += `<div class="role-cell ${isSelected ? 'selected' : ''}" data-col="${c}" data-row="${r}"><img src="${dataURL}" width="${frameW}" height="${frameH}" style="image-rendering: crisp-edges;"><div class="role-label">(${c}, ${r})</div></div>`;
+            }
+        }
+        html += `</div><p style="font-size:0.7rem;">点击选择角色</p>`;
+        roleGridContainer.innerHTML = html;
+        document.querySelectorAll('.role-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const col = parseInt(cell.dataset.col), row = parseInt(cell.dataset.row);
+                roleColOffsetInput.value = col; roleRowOffsetInput.value = row;
+                document.querySelectorAll('.role-cell').forEach(el => el.classList.remove('selected'));
+                cell.classList.add('selected');
+                setStatus(`已选择角色 (${col}, ${row})`);
+                if (previewInterval) startPreview();
+            });
+        });
+    }
+
+    function initDirButtons() {
+        dirButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dir = btn.dataset.dir;
+                activeDirs[dir] = !activeDirs[dir];
+                activeDirs[dir] ? btn.classList.add('active') : btn.classList.remove('active');
+                if (previewInterval) startPreview();
+            });
+        });
+    }
+
+    function setupDragZones() {
+        singleDropZone.addEventListener('dragover', (e) => { e.preventDefault(); singleDropZone.classList.add('drag-over'); });
+        singleDropZone.addEventListener('dragleave', () => { singleDropZone.classList.remove('drag-over'); });
+        singleDropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            singleDropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files && files.length) await handleSingleImageDrop(Array.from(files));
+        });
+        
+        rightPanelDropZone.addEventListener('dragover', (e) => { e.preventDefault(); rightPanelDropZone.classList.add('drag-over-highlight'); });
+        rightPanelDropZone.addEventListener('dragleave', () => { rightPanelDropZone.classList.remove('drag-over-highlight'); });
+        rightPanelDropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            rightPanelDropZone.classList.remove('drag-over-highlight');
+            const files = e.dataTransfer.files;
+            if (files && files.length) await handleSingleImageDrop(Array.from(files));
+        });
+
+        batchDropZone.addEventListener('dragover', (e) => { e.preventDefault(); batchDropZone.classList.add('drag-over'); });
+        batchDropZone.addEventListener('dragleave', () => { batchDropZone.classList.remove('drag-over'); });
+        batchDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            batchDropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files && files.length) addFilesToBatch(Array.from(files));
+        });
+    }
+
+    function bindEvents() {
+        fileInput.addEventListener('change', (e) => { if(e.target.files[0]) handleSingleImageDrop([e.target.files[0]]); });
+        batchUploadInput.addEventListener('change', (e) => { if(e.target.files.length) addFilesToBatch(Array.from(e.target.files)); batchUploadInput.value = null; });
+        clearAllFilesBtn.addEventListener('click', clearAllFiles);
+        
+        batchZipDirectBtn.addEventListener('click', () => batchProcess('zip'));
+        batchSingleDirectBtn.addEventListener('click', () => batchProcess('single'));
+        
+        previewBtn.addEventListener('click', startPreview);
+        stopPreviewBtn.addEventListener('click', () => { stopPreview(); if(originalImage){ const ctx=previewCanvas.getContext('2d'); previewCanvas.width=Math.min(300,originalImage.width); previewCanvas.height=previewCanvas.width*(originalImage.height/originalImage.width); ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height); ctx.drawImage(originalImage,0,0,previewCanvas.width,previewCanvas.height); } setStatus('预览停止'); });
+        generateAndDownloadBtn.addEventListener('click', generateAndDownloadSingle);
+        exportAllRolesZipBtn.addEventListener('click', exportAllRolesAsZip);
+        exportAllRolesSingleBtn.addEventListener('click', exportAllRolesAsSingle);
+        autoDetectCheck.addEventListener('change', () => { if(originalImage && autoDetectCheck.checked){ const {cols,rows,colsPerRole,rowsPerRole}=detectGridFromFilename(currentFileName); colsInput.value=cols; rowsInput.value=rows; colsPerRoleInput.value=colsPerRole; rowsPerRoleInput.value=rowsPerRole; buildRoleGrid(); } });
+        applyOffsetBtn.addEventListener('click', () => { if(originalImage){ if(previewInterval) startPreview(); buildRoleGrid(); } });
+        [colsInput, rowsInput, frameWInput, frameHInput, colsPerRoleInput, rowsPerRoleInput].forEach(inp => inp.addEventListener('change', () => buildRoleGrid()));
+        initDirButtons();
+    }
+
+    renderBatchFileList();
+    bindEvents();
+    setupDragZones();
+    setStatus('✅ 就绪。支持拖拽文件上传。');
+
+    // ========== 放大工具逻辑 ==========
+    (function() {
+        const scaleUpload = document.getElementById('scaleUpload');
+        const scaleFactor = document.getElementById('scaleFactor');
+        const customScaleContainer = document.getElementById('customScaleContainer');
+        const scaleBtnGroup = document.getElementById('scaleBtnGroup');
+        const scaleSingleBtn = document.getElementById('scaleSingleBtn');
+        const scalePreviewBtn = document.getElementById('scalePreviewBtn');
+        const scalePreviewCanvas = document.getElementById('scalePreviewCanvas');
+        const scaleStatus = document.getElementById('scaleStatus');
+        const scaleBatchInput = document.getElementById('scaleBatchInput');
+        const scaleBatchFileList = document.getElementById('scaleBatchFileList');
+        const scaleBatchCount = document.getElementById('scaleBatchCount');
+        const scaleClearAllBtn = document.getElementById('scaleClearAllBtn');
+        const scaleBatchZipBtn = document.getElementById('scaleBatchZipBtn');
+        const scaleBatchSingleBtn = document.getElementById('scaleBatchSingleBtn');
+        const scaleBatchTargetFrameBtn = document.getElementById('scaleBatchTargetFrameBtn');
+        const exportFrameIndexInput = document.getElementById('exportFrameIndexInput');
+        const scaleBatchProgress = document.getElementById('scaleBatchProgress');
+        const scaleBatchFill = document.getElementById('scaleBatchFill');
+        const scaleBatchStatus = document.getElementById('scaleBatchStatus');
+        const scaleSingleDropZone = document.getElementById('scaleSingleDropZone');
+        const scaleBatchDropZone = document.getElementById('scaleBatchDropZone');
+
+        let currentScaleData = null;
+        let scaleBatchFiles = [];
+
+        const scaleBtns = scaleBtnGroup.querySelectorAll('.dir-btn');
+        scaleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                scaleBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const val = btn.dataset.scale;
+                if (val === 'custom') {
+                    customScaleContainer.style.display = 'block';
+                } else {
+                    customScaleContainer.style.display = 'none';
+                    scaleFactor.value = val;
+                }
+            });
+        });
+
+        function parseAnyImageFile(file) {
+            return new Promise((resolve, reject) => {
+                if (file.type === 'image/gif') {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const arrayBuffer = e.target.result;
+                            const gifData = window.Gifuct.parseGIF(arrayBuffer);
+                            const frames = window.Gifuct.decompressFrames(gifData, true);
+                            const frameDelays = frames.map(f => (f.delay && f.delay > 20) ? f.delay : 100);
+                            const frameCanvases = frames.map(f => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = gifData.width;
+                                canvas.height = gifData.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                const imageData = new ImageData(new Uint8ClampedArray(f.patch), gifData.width, gifData.height);
+                                ctx.putImageData(imageData, 0, 0);
+                                return canvas;
+                            });
+                            resolve({
+                                type: 'gif',
+                                frames: frameCanvases,
+                                delays: frameDelays,
+                                width: gifData.width,
+                                height: gifData.height,
+                                name: file.name
+                            });
+                        } catch(err) {
+                            reject(new Error('解析GIF失败: ' + err.message));
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                            resolve({
+                                type: 'image',
+                                frames: [canvas],
+                                delays: [100],
+                                width: img.width,
+                                height: img.height,
+                                name: file.name
+                            });
+                        };
+                        img.onerror = () => reject(new Error('无法解析图像文件'));
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function scaleFrames(frames, factor, width, height) {
+            const newWidth = Math.floor(width * factor);
+            const newHeight = Math.floor(height * factor);
+            return frames.map(frameCanvas => {
+                const canvas = document.createElement('canvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, newWidth, newHeight);
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(frameCanvas, 0, 0, newWidth, newHeight);
+                return canvas;
+            });
+        }
+
+        async function generateScaledResult(parsedData, factor, quality = 1, forceSingleFrame = false, frameIndex = 1) {
+            const newWidth = Math.floor(parsedData.width * factor);
+            const newHeight = Math.floor(parsedData.height * factor);
+            const scaledFrames = scaleFrames(parsedData.frames, factor, parsedData.width, parsedData.height);
+
+            if (parsedData.type === 'image' || forceSingleFrame || scaledFrames.length === 1) {
+                let targetIdx = Math.max(0, Math.min(frameIndex - 1, scaledFrames.length - 1));
+                const targetCanvas = scaledFrames[targetIdx];
+
+                return new Promise((resolve) => {
+                    targetCanvas.toBlob((blob) => resolve({ blob, ext: 'png' }), 'image/png');
+                });
+            } else {
+                const workerUrl = await getWorkerScriptUrl();
+                return new Promise((resolve, reject) => {
+                    const gif = new GIF({
+                        workers: 2,
+                        quality,
+                        width: newWidth,
+                        height: newHeight,
+                        workerScript: workerUrl,
+                        transparent: 0x00FF00
+                    });
+                    for (let i = 0; i < scaledFrames.length; i++) {
+                        const currentDelay = (parsedData.delays[i] && parsedData.delays[i] > 20) ? parsedData.delays[i] : 100;
+                        const srcCanvas = scaledFrames[i];
+                        const srcCtx = srcCanvas.getContext('2d');
+                        const imgData = srcCtx.getImageData(0, 0, newWidth, newHeight);
+                        const data = imgData.data;
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = newWidth;
+                        tempCanvas.height = newHeight;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        const newImgData = tempCtx.createImageData(newWidth, newHeight);
+                        const newData = newImgData.data;
+
+                        for (let px = 0; px < data.length; px += 4) {
+                            let r = data[px];
+                            let g = data[px + 1];
+                            let b = data[px + 2];
+                            let a = data[px + 3];
+
+                            if (a < 128) {
+                                newData[px] = 0;
+                                newData[px + 1] = 255;
+                                newData[px + 2] = 0;
+                                newData[px + 3] = 255;
+                            } else {
+                                if (r === 0 && g === 255 && b === 0) {
+                                    g = 254;
+                                }
+                                newData[px] = r;
+                                newData[px + 1] = g;
+                                newData[px + 2] = b;
+                                newData[px + 3] = 255;
+                            }
+                        }
+                        tempCtx.putImageData(newImgData, 0, 0);
+                        gif.addFrame(tempCanvas, { delay: currentDelay, copy: true, dispose: 2 });
+                    }
+                    gif.on('finished', (blob) => resolve({ blob, ext: 'gif' }));
+                    gif.on('error', reject);
+                    gif.render();
+                });
+            }
+        }
+
+        function renderScaleBatchList() {
+            scaleBatchCount.innerText = scaleBatchFiles.length;
+            if (scaleBatchFiles.length === 0) {
+                scaleBatchFileList.innerHTML = '<div style="color:#aaa; text-align:center;">暂无文件</div>';
+                return;
+            }
+            let html = '';
+            scaleBatchFiles.forEach((f, idx) => {
+                html += `<div class="file-item"><span class="file-name">📄 ${escapeHtml(f.name)}</span><button class="remove-file-btn" data-idx="${idx}">移除</button></div>`;
+            });
+            scaleBatchFileList.innerHTML = html;
+            scaleBatchFileList.querySelectorAll('.remove-file-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    if (!isNaN(idx)) { scaleBatchFiles.splice(idx, 1); renderScaleBatchList(); }
+                });
+            });
+        }
+
+        async function processScaleBatch(mode) {
+            if (scaleBatchFiles.length === 0) { scaleBatchStatus.innerText = '请添加文件'; return; }
+            scaleBatchProgress.style.display = 'block';
+            scaleBatchFill.style.width = '0%';
+            scaleBatchStatus.innerText = '准备...';
+            const factor = parseInt(scaleFactor.value, 10) || 2;
+            if (factor < 2) { scaleBatchStatus.innerText = '倍数至少为2'; return; }
+            
+            let zip = null;
+            if (mode === 'zip') zip = new JSZip();
+            let count = 0;
+            const forceFirstFrame = (mode === 'targetFrame');
+            const targetFrameIndex = parseInt(exportFrameIndexInput.value, 10) || 2;
+
+            for (let i = 0; i < scaleBatchFiles.length; i++) {
+                const file = scaleBatchFiles[i];
+                scaleBatchStatus.innerText = `处理 ${i+1}/${scaleBatchFiles.length}: ${file.name}`;
+                scaleBatchFill.style.width = `${(i / scaleBatchFiles.length) * 100}%`;
+                try {
+                    const parsed = await parseAnyImageFile(file);
+                    const { blob, ext } = await generateScaledResult(parsed, factor, 1, forceFirstFrame, targetFrameIndex);
+                    const suffix = forceFirstFrame ? `_第${targetFrameIndex}帧x` : '_放大x';
+                    const baseName = file.name.replace(/\.[^/.]+$/, '') + suffix + factor + '.' + ext;
+                    
+                    if (mode === 'zip') {
+                        zip.file(baseName, blob);
+                    } else {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = baseName;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                    count++;
+                } catch(e) {
+                    scaleBatchStatus.innerText = `错误: ${file.name} - ${e.message}`;
+                    console.warn(e);
+                }
+            }
+            if (mode === 'zip' && zip) {
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `放大处理文件_${Date.now()}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                scaleBatchStatus.innerText = `✅ 打包完成，共 ${count} 个文件`;
+                showZipNotice();
+            } else {
+                scaleBatchStatus.innerText = `✅ 已触发 ${count} 次下载`;
+            }
+            setTimeout(() => { scaleBatchProgress.style.display = 'none'; }, 2000);
+        }
+
+        scaleSingleBtn.addEventListener('click', async () => {
+            if (!currentScaleData) { scaleStatus.innerText = '请先上传图片/GIF'; return; }
+            const factor = parseInt(scaleFactor.value, 10) || 2;
+            if (factor < 2) { scaleStatus.innerText = '倍数至少为2'; return; }
+            scaleStatus.innerText = '生成中...';
+            try {
+                const { blob, ext } = await generateScaledResult(currentScaleData, factor, 1);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentScaleData.name.replace(/\.[^/.]+$/, '') + '_放大x' + factor + '.' + ext;
+                a.click();
+                URL.revokeObjectURL(url);
+                scaleStatus.innerText = '✅ 下载完成';
+            } catch(e) {
+                scaleStatus.innerText = '错误: ' + e.message;
+            }
+        });
+
+        scalePreviewBtn.addEventListener('click', async () => {
+            if (!currentScaleData) { scaleStatus.innerText = '请先上传图片/GIF'; return; }
+            const factor = parseInt(scaleFactor.value, 10) || 2;
+            if (factor < 2) { scaleStatus.innerText = '倍数至少为2'; return; }
+            scaleStatus.innerText = '预览生成...';
+            try {
+                const { blob } = await generateScaledResult(currentScaleData, factor, 1);
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    const ctx = scalePreviewCanvas.getContext('2d');
+                    scalePreviewCanvas.width = Math.min(400, img.width);
+                    scalePreviewCanvas.height = scalePreviewCanvas.width * (img.height/img.width);
+                    ctx.clearRect(0, 0, scalePreviewCanvas.width, scalePreviewCanvas.height);
+                    ctx.drawImage(img, 0, 0, scalePreviewCanvas.width, scalePreviewCanvas.height);
+                    URL.revokeObjectURL(url);
+                    scaleStatus.innerText = '✅ 预览完成';
+                };
+                img.src = url;
+            } catch(e) {
+                scaleStatus.innerText = '预览错误: ' + e.message;
+            }
+        });
+
+        scaleUpload.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            scaleStatus.innerText = '解析中...';
+            try {
+                currentScaleData = await parseAnyImageFile(file);
+                scaleStatus.innerText = `解析成功: ${currentScaleData.frames.length} 帧, 原尺寸 ${currentScaleData.width}x${currentScaleData.height}`;
+                const ctx = scalePreviewCanvas.getContext('2d');
+                const first = currentScaleData.frames[0];
+                scalePreviewCanvas.width = Math.min(300, first.width);
+                scalePreviewCanvas.height = scalePreviewCanvas.width * (first.width? first.height/first.width: 1);
+                ctx.clearRect(0, 0, scalePreviewCanvas.width, scalePreviewCanvas.height);
+                ctx.drawImage(first, 0, 0, scalePreviewCanvas.width, scalePreviewCanvas.height);
+            } catch(err) {
+                scaleStatus.innerText = '解析失败: ' + err.message;
+                currentScaleData = null;
+            }
+        });
+
+        scaleBatchInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            for (const f of files) {
+                if (f.type.startsWith('image/')) {
+                    if (!scaleBatchFiles.some(x => x.name === f.name && x.size === f.size)) {
+                        scaleBatchFiles.push(f);
+                    }
+                }
+            }
+            renderScaleBatchList();
+            scaleBatchInput.value = null;
+        });
+
+        scaleClearAllBtn.addEventListener('click', () => { scaleBatchFiles = []; renderScaleBatchList(); });
+        scaleBatchZipBtn.addEventListener('click', () => processScaleBatch('zip'));
+        scaleBatchSingleBtn.addEventListener('click', () => processScaleBatch('single'));
+        scaleBatchTargetFrameBtn.addEventListener('click', () => processScaleBatch('targetFrame'));
+
+        scaleSingleDropZone.addEventListener('dragover', (e) => { e.preventDefault(); scaleSingleDropZone.classList.add('drag-over-highlight'); });
+        scaleSingleDropZone.addEventListener('dragleave', () => { scaleSingleDropZone.classList.remove('drag-over-highlight'); });
+        scaleSingleDropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            scaleSingleDropZone.classList.remove('drag-over-highlight');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                const imgFile = Array.from(files).find(f => f.type.startsWith('image/'));
+                if (imgFile) {
+                    scaleUpload.files = files;
+                    scaleUpload.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+
+        scaleBatchDropZone.addEventListener('dragover', (e) => { e.preventDefault(); scaleBatchDropZone.classList.add('drag-over-highlight'); });
+        scaleBatchDropZone.addEventListener('dragleave', () => { scaleBatchDropZone.classList.remove('drag-over-highlight'); });
+        scaleBatchDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            scaleBatchDropZone.classList.remove('drag-over-highlight');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                for (const f of files) {
+                    if (f.type.startsWith('image/')) {
+                        if (!scaleBatchFiles.some(x => x.name === f.name && x.size === f.size)) {
+                            scaleBatchFiles.push(f);
+                        }
+                    }
+                }
+                renderScaleBatchList();
+            }
+        });
+    })();
+</script>
+</body>
+</html>
