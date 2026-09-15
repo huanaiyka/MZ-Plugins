@@ -36,59 +36,35 @@
  * ============================================================================
  */
 
-(function() {
+(() => {
     'use strict';
 
-    /**
-     * 解析地图注释中的敌群控制标签
-     * @param {string} note - 地图备注
-     * @returns {{startIndex: number, switchId: number} | null}
-     */
-    function parseEncounterControlConfig(note) {
-        if (!note) return null;
+    // 重写地图遇敌列表获取逻辑
+    const _Game_Map_encounterList = Game_Map.prototype.encounterList;
+    Game_Map.prototype.encounterList = function() {
+        // 获取原始遇敌列表
+        const list = _Game_Map_encounterList.call(this);
 
-        const match = note.match(/<ControlEncounter:\s*(\d+)\s*\|\s*(\d+)>/i);
-        if (match) {
-            return {
-                startIndex: parseInt(match[1], 10), // 从第几个开始（1-based）
-                switchId: parseInt(match[2], 10)     // 控制开关 ID
-            };
+        // 如果地图没有配置备注，直接返回原始列表
+        if (!$dataMap || !$dataMap.meta) {
+            return list;
         }
-        return null;
-    }
 
-    // ---- 在地图加载时缓存解析配置 ----
-    const _Game_Map_setup = Game_Map.prototype.setup;
-    Game_Map.prototype.setup = function(mapId) {
-        _Game_Map_setup.call(this, mapId);
-        const note = $dataMap ? $dataMap.note : "";
-        this._encounterControlConfig = parseEncounterControlConfig(note);
+        // 解析地图备注 <ControlEncounter: 起始序号 | 开关ID>
+        const tag = $dataMap.meta.ControlEncounter;
+        if (tag) {
+            const params = tag.split('|').map(item => parseInt(item.trim(), 10));
+            const startIndex = params[0]; // 1-based index (如 3 表示第3组)
+            const switchId = params[1];
+
+            // 校验参数合法性以及对应开关状态
+            if (startIndex && switchId && !$gameSwitches.value(switchId)) {
+                // 如果指定开关为 OFF，截取第 1 个到第 (startIndex - 1) 个敌群
+                // 索引转换：数组下标从 0 开始，所以截取 0 到 startIndex - 1
+                return list.slice(0, Math.max(0, startIndex - 1));
+            }
+        }
+
+        return list;
     };
-
-    // ---- 拦截并过滤遇敌列表 ----
-    const _Game_Player_makeEncounterList = Game_Player.prototype.makeEncounterList;
-    Game_Player.prototype.makeEncounterList = function() {
-        // 1. 获取地图原本配置的所有遇敌项
-        const originalList = _Game_Player_makeEncounterList.call(this) || [];
-        const config = $gameMap._encounterControlConfig;
-
-        // 2. 如果没有设置标签，或者设置的起始序号非法，直接返回原列表
-        if (!config || config.startIndex <= 1) {
-            return originalList;
-        }
-
-        // 3. 检查控制开关的状态
-        const isSwitchOn = $gameSwitches.value(config.switchId);
-
-        // 4. 如果开关打开，允许遇到全部敌群；如果开关关闭，截取前面的部分
-        if (isSwitchOn) {
-            return originalList;
-        } else {
-            // startIndex 是 1-based，转为数组索引需要 -1
-            // 例如 startIndex = 3，则截取 index 0 和 1（即第 1、2 项）
-            const cutoffIndex = config.startIndex - 1;
-            return originalList.slice(0, cutoffIndex);
-        }
-    };
-
 })();

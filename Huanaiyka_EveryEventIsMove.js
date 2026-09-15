@@ -21,37 +21,10 @@
  * ============================================================================
  * 插件指令
  * ============================================================================
- * ◆ GetPushedEventId 变量     → 将被推事件的ID存入指定变量（变量下拉选择）
+ * ◆ GetPushedEventId 变量     → 将被推事件的ID存入指定变量
  * ◆ GetPushedEventX 变量      → 将被推事件的X坐标存入指定变量
  * ◆ GetPushedEventY 变量      → 将被推事件的Y坐标存入指定变量
  * ◆ GetPushedDirection 变量   → 将推动方向(2/4/6/8)存入指定变量
- *
- * 注意：如果没有发生过任何推动，则存入0。
- * 
- * 使用例：使用公共事件，检测若该事件被推动，则变量+1。
- * 变量增加一定程度后，NPC的对话发生改变。
- * ============================================================================
- * 脚本调用
- * ============================================================================
- *   Huanaiyka.EveryEventIsMove.getLastPushedEventId()
- *   Huanaiyka.EveryEventIsMove.getLastPushedEventX()
- *   Huanaiyka.EveryEventIsMove.getLastPushedEventY()
- *   Huanaiyka.EveryEventIsMove.getLastPushedDirection()
- *
-============================================================================
- * 与原版（李先生版 everyEventIs_move）的区别
- * ============================================================================
- * 本插件基于李先生的开源作品进行重构与增强，主要变更如下：
- *   • 移动类型过滤：可单独控制是否允许推动随机、接近、远离、固定、自定义移动类型的事件。
- *   • 长按帧数可调：支持自定义长按判定帧数。
- *   • 连续推动冷却：可设置两次推动之间的间隔帧数，避免误触。
- *   • 记录推动信息：自动记录最后被推事件的ID、坐标和推动方向，方便通过变量或脚本调用。
- *   • 插件指令：提供4条插件指令获取被推事件信息（ID、X、Y、方向）。
- *   • 触发公共事件：支持备注 <被推:公共事件ID> 在推动后自动执行公共事件。
- *   • 更稳健的长按检测：采用 Input._pressedTime 与最新按键结合，兼容性更好。
- *   • 兼容性增强：对旧存档自动补齐冷却属性，避免报错。
- *
-============================================================================
  *
  * @param enablePushNPC
  * @text 启用推动NPC
@@ -180,7 +153,7 @@ Huanaiyka.EveryEventIsMove.getLastPushedDirection = function() {
     Huanaiyka.EveryEventIsMove.pushCooldownFrames = parseInt(params['pushCooldownFrames'] || 15, 10);
 })();
 
-// 注册四个独立插件指令
+// 注册插件指令
 PluginManager.registerCommand('Huanaiyka_EveryEventIsMove', 'GetPushedEventId', args => {
     const varId = parseInt(args.varId, 10);
     if (!isNaN(varId)) $gameVariables.setValue(varId, Huanaiyka.EveryEventIsMove._lastPushed.eventId);
@@ -200,20 +173,16 @@ PluginManager.registerCommand('Huanaiyka_EveryEventIsMove', 'GetPushedDirection'
 
 // ========== 核心推动方法 ==========
 Huanaiyka.EveryEventIsMove.pushBox = function(event) {
+    if (!event) return false;
     const playerDir = $gamePlayer.direction();
-    let newX = event._x;
-    let newY = event._y;
-    switch (playerDir) {
-        case 2: newY++; break;
-        case 4: newX--; break;
-        case 6: newX++; break;
-        case 8: newY--; break;
-    }
-    if (!event.canPass(newX, newY, playerDir)) {
+    
+    // 检查事件是否能朝该方向移动
+    if (!event.canPass(event._x, event._y, playerDir)) {
         return false;
     }
-    event.turnAwayFromPlayer();
-    event.moveForward();
+    
+    // 使用明确方向移动，避免受方向固定影响
+    event.moveStraight(playerDir);
 
     // 记录被推信息
     Huanaiyka.EveryEventIsMove._lastPushed.eventId = event._eventId;
@@ -234,6 +203,7 @@ Huanaiyka.EveryEventIsMove.pushBox = function(event) {
 
 // ========== 移动类型筛选 ==========
 Huanaiyka.EveryEventIsMove.isMoveTypeAllowed = function(event) {
+    if (!event) return false;
     const moveType = event._moveType;
     switch (moveType) {
         case 0: return Huanaiyka.EveryEventIsMove.enableFixed;   // 固定
@@ -245,7 +215,7 @@ Huanaiyka.EveryEventIsMove.isMoveTypeAllowed = function(event) {
     }
 };
 
-// ========== 长按检测 ==========
+// ========== 长按计数与按键监测 ==========
 Game_Map.prototype.directionToKeyName = function(d) {
     switch (d) {
         case 2: return 'down';
@@ -257,44 +227,42 @@ Game_Map.prototype.directionToKeyName = function(d) {
 };
 
 Game_Map.prototype.islongPress = function() {
-    if (($gamePlayer._x !== $gamePlayer._realX) || ($gamePlayer._y !== $gamePlayer._realY)) return false;
+    if ($gamePlayer.isMoving()) return false;
     const key = this.directionToKeyName($gamePlayer.direction());
     if (!key) return false;
-    return (Input._latestButton === key && Input._pressedTime >= Huanaiyka.EveryEventIsMove.longPressFrames);
+    
+    // 使用标准 Input.isPressed API 维护连续按压计数
+    if (Input.isPressed(key)) {
+        this._pushPressTimer = (this._pushPressTimer || 0) + 1;
+    } else {
+        this._pushPressTimer = 0;
+    }
+    
+    return this._pushPressTimer >= Huanaiyka.EveryEventIsMove.longPressFrames;
 };
 
 // ========== 获取玩家面前的事件 ==========
 Game_Map.prototype.getEventInFrontOfPlayer = function() {
     if (!(SceneManager._scene instanceof Scene_Map)) return null;
-    let x = $gamePlayer._x;
-    let y = $gamePlayer._y;
-    switch ($gamePlayer.direction()) {
-        case 2: y++; break;
-        case 4: x--; break;
-        case 6: x++; break;
-        case 8: y--; break;
-    }
-    const events = this.events();
-    if (!events) return null;
-    for (let i = 0; i < events.length; i++) {
-        const ev = events[i];
-        if (ev && ev._x === x && ev._y === y) return ev;
-    }
-    return null;
+    
+    const x = $gameMap.xWithDirection($gamePlayer._x, $gamePlayer.direction());
+    const y = $gameMap.yWithDirection($gamePlayer._y, $gamePlayer.direction());
+    
+    const events = this.eventsXy(x, y);
+    return events.length > 0 ? events[0] : null;
 };
 
-// ========== 冷却机制（修复旧存档兼容性） ==========
+// ========== 冷却机制 ==========
 const _Game_Map_initialize = Game_Map.prototype.initialize;
 Game_Map.prototype.initialize = function() {
     _Game_Map_initialize.call(this);
     this._pushCooldown = 0;
+    this._pushPressTimer = 0;
 };
 
-// 确保冷却属性始终存在（旧存档补齐）
 Game_Map.prototype.ensurePushCooldown = function() {
-    if (this._pushCooldown === undefined || this._pushCooldown === null) {
-        this._pushCooldown = 0;
-    }
+    if (this._pushCooldown === undefined) this._pushCooldown = 0;
+    if (this._pushPressTimer === undefined) this._pushPressTimer = 0;
 };
 
 Game_Map.prototype.updatePushCooldown = function() {
@@ -305,15 +273,20 @@ Game_Map.prototype.updatePushCooldown = function() {
 const _Game_Map_update = Game_Map.prototype.update;
 Game_Map.prototype.update = function(sceneActive) {
     _Game_Map_update.call(this, sceneActive);
-    this.ensurePushCooldown();          // 关键：确保旧存档有该属性
-    this.updatePushCooldown();
-    if (Huanaiyka.EveryEventIsMove.enablePushNPC) {
-        if (this._pushCooldown === 0) {
-            const event = this.getEventInFrontOfPlayer();
-            if (event && Huanaiyka.EveryEventIsMove.isMoveTypeAllowed(event) && this.islongPress()) {
-                if (Huanaiyka.EveryEventIsMove.pushBox(event)) {
-                    this._pushCooldown = Huanaiyka.EveryEventIsMove.pushCooldownFrames;
+    
+    if (sceneActive) {
+        this.updatePushCooldown();
+        if (Huanaiyka.EveryEventIsMove.enablePushNPC) {
+            if (this._pushCooldown === 0) {
+                const event = this.getEventInFrontOfPlayer();
+                if (event && Huanaiyka.EveryEventIsMove.isMoveTypeAllowed(event) && this.islongPress()) {
+                    if (Huanaiyka.EveryEventIsMove.pushBox(event)) {
+                        this._pushCooldown = Huanaiyka.EveryEventIsMove.pushCooldownFrames;
+                    }
                 }
+            } else {
+                // 触发长按判定更新以防按键计时断层
+                this.islongPress();
             }
         }
     }
@@ -323,22 +296,12 @@ Game_Map.prototype.update = function(sceneActive) {
 const _Game_Event_start = Game_Event.prototype.start;
 Game_Event.prototype.start = function() {
     _Game_Event_start.call(this);
-    if (this.event() && this.event().note && this.event().note.contains('箱子')) {
-        if (this.canPass(this._x, this._y, $gamePlayer.direction())) {
-            Huanaiyka.EveryEventIsMove.pushBox(this);
-        }
+    if (this.event() && this.event().note && this.event().note.includes('<箱子>')) {
+        Huanaiyka.EveryEventIsMove.pushBox(this);
     }
 };
 
-// ========== 按键记录兼容 ==========
-let latestButton = '';
-const _Input_update = Input.update;
-Input.update = function() {
-    _Input_update.call(this);
-    if (this._currentState[this._latestButton]) latestButton = this._latestButton;
-};
-Input.isLongPressed_ex = function() { return false; };
-
+// 保持向下兼容
 var KSYD = KSYD || {};
 KSYD.Ayano_pushBox = KSYD.Ayano_pushBox || {};
 KSYD.Ayano_pushBox.pushBox = Huanaiyka.EveryEventIsMove.pushBox;

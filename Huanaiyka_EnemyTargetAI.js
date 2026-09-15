@@ -3,8 +3,9 @@
 //=============================================================================
 /*:
  * @target MZ
- * @plugindesc 敌人智能AI：不会对目标使用元素无效的技能，支持进攻偏好
+ * @plugindesc 敌人智能AI
  * @author 幻爱
+ * @url https://github.com/huanaiyka/MZ-Plugins
  * @help
  * ============================================================================
  * 简介
@@ -14,6 +15,9 @@
  * 2. 支持进攻偏好规则（优先打血量最低、带有特定状态、被属性克制、六围高低等）。
  * 两者可同时使用（先过滤免疫，再按偏好选目标），也可单独使用其中一种。
  * 如果所有技能对所有目标都免疫，敌人会“不得已”打出免疫伤害（不会跳过回合）。
+ * 
+ * 注意：当敌人没有配置任何<TargetPref>标签且不需要过滤免疫属性时，
+ * 插件将完全交还给 RPG Maker MZ 原版目标选取机制（按 TGR 权重随机选人）。
  *
  * 3. 在技能的备注栏中填写 <SkillNoSelf>
  * 当敌人使用目标为“我方单体”（对怪物而言即它的队友）的技能时，会自动把自身从目标池中剔除，
@@ -89,6 +93,12 @@
  * @default true
  * @desc 敌人没有备注<EnemyElementAvoid>时是否启用元素避免。关闭后只有带<EnemyElementAvoid:true>的敌人才会进行免疫过滤。
  *
+ * @param checkZeroTgr
+ * @text 过滤受到攻击几率为0的角色
+ * @type boolean
+ * @default true
+ * @desc 是否在触发AI筛选时自动排除受攻击几率(TGR)<=0的角色（全员为0时保底）。
+ *
  * @param immunityThreshold
  * @text 免疫阈值
  * @type number
@@ -134,6 +144,7 @@
     //---------------------------------------------
     const params = PluginManager.parameters("Huanaiyka_EnemyTargetAI");
     const DEFAULT_ENABLE      = params["enable"] !== "false";
+    const CHECK_ZERO_TGR      = params["checkZeroTgr"] !== "false";
     const IMMUNE_THRESHOLD    = parseFloat(params["immunityThreshold"] || 0);
     const CHECK_NON_DAMAGE    = params["checkNonDamage"] === "true";
     const IGNORE_NO_ELEMENT   = params["ignoreNoElement"] !== "false";
@@ -366,22 +377,25 @@
 
     function selectTargetByPreference(candidates, rules, action) {
         if (!candidates || candidates.length === 0) return null;
-        if (candidates.length === 1) return candidates[0];
 
         let currentCandidates = candidates.slice();
 
-        // 顺序迭代解析规则过滤链
-        if (rules && rules.length > 0) {
-            for (const rule of rules) {
-                currentCandidates = processSingleRuleFilter(currentCandidates, rule, action);
-                // 筛选完毕仅剩 1 人时可立即返回
-                if (currentCandidates.length === 1) {
-                    return currentCandidates[0];
-                }
+        // 剔除受攻击几率 <= 0 的目标
+        if (CHECK_ZERO_TGR) {
+            const validTgrCandidates = currentCandidates.filter(t => t.tgr > 0);
+            if (validTgrCandidates.length > 0) {
+                currentCandidates = validTgrCandidates;
             }
         }
 
-        // 最终多名选人结果由 TGR 决定
+        // 顺序迭代解析偏好规则过滤链
+        if (rules && rules.length > 0) {
+            for (const rule of rules) {
+                currentCandidates = processSingleRuleFilter(currentCandidates, rule, action);
+            }
+        }
+
+        // 最终多名选人结果交由 TGR 算法决定
         return selectTargetByTgr(currentCandidates);
     }
 
@@ -481,28 +495,38 @@
                 const skill = this.item();
                 if (!skill) return _Game_Action_targetsForOpponents.call(this);
 
+                const prefRules = getEnemyTargetPrefRules(subject);
+                const hasPrefRules = prefRules && prefRules.length > 0;
+
                 const elementId = skill.damage ? skill.damage.elementId : 0;
                 const isElemental = !(IGNORE_NO_ELEMENT && elementId === 0) &&
                                     (CHECK_NON_DAMAGE || this.isDamage()) &&
                                     elementId > 0;
 
-                const allOpponents = this.opponentsUnit().aliveMembers();
-                if (allOpponents.length === 0) return [];
-
-                let candidates = allOpponents;
                 const avoidActive = isEnemyAIActive(subject);
                 const isFallback = subject._elementAvoidFallback === true;
 
-                // 1. 过滤免疫目标
+                const allOpponents = this.opponentsUnit().aliveMembers();
+                if (allOpponents.length === 0) return [];
+
+                // 检查是否真存在属性免疫需要剔除的目标
+                let hasImmuneTarget = false;
                 if (avoidActive && !isFallback && isElemental) {
-                    const valid = allOpponents.filter(t => t.elementRate(elementId) > IMMUNE_THRESHOLD);
-                    if (valid.length > 0) {
-                        candidates = valid;
-                    }
+                    hasImmuneTarget = allOpponents.some(t => t.elementRate(elementId) <= IMMUNE_THRESHOLD);
                 }
 
-                // 2. 依次按进攻偏好规则过滤并抽取目标
-                const prefRules = getEnemyTargetPrefRules(subject);
+                // 【核心改进】：如果没有写任何偏好标签，且当前技能不需要过滤属性免疫目标，完全回归原版 RM 选取机制
+                if (!hasPrefRules && !hasImmuneTarget) {
+                    return _Game_Action_targetsForOpponents.call(this);
+                }
+
+                // 只有当存在偏好标签或触发属性过滤时，才走 AI 自定义选取流程
+                let candidates = allOpponents;
+                if (hasImmuneTarget) {
+                    const valid = allOpponents.filter(t => t.elementRate(elementId) > IMMUNE_THRESHOLD);
+                    if (valid.length > 0) candidates = valid;
+                }
+
                 const chosen = selectTargetByPreference(candidates, prefRules, this);
                 if (chosen) return [chosen];
             }

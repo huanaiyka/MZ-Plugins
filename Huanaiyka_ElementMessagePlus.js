@@ -120,12 +120,30 @@ var elemRateForMess = 0;
 // ----------------------------------------------------------------------------
 function getPureElementRate(action, target) {
     var elementId = action.item().damage.elementId;
-    // 无属性或元素ID无效：返回等倍 1.0
-    if (elementId <= 0) return 1.0;
-    // 直接读取目标对该属性的原始倍率
-    return target.elementRate(elementId);
+    
+    // 如果技能自带明确的属性（例如火球术 Element ID > 0），按修改版的逻辑直接读取
+    if (elementId > 0) {
+        return target.elementRate(elementId);
+    }
+    
+    // 如果是普通攻击属性（Element ID === -1），提取武器/攻击者的所有攻击属性，取对目标伤害最大的属性倍率
+    if (elementId === -1) {
+        var elements = action.subject().attackElements();
+        if (elements.length === 0) return 1.0; // 纯物理无属性
+        
+        // 计算目标对武器各个属性的有效度，取最大值（引擎原生逻辑）
+        var maxRate = 0;
+        for (var i = 0; i < elements.length; i++) {
+            var rate = target.elementRate(elements[i]);
+            if (rate > maxRate) {
+                maxRate = rate;
+            }
+        }
+        return maxRate;
+    }
+    
+    return 1.0;
 }
-
 // ----------------------------------------------------------------------------
 // 修改 makeDamageValue：在伤害计算前记录纯净的属性有效度
 // ----------------------------------------------------------------------------

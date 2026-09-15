@@ -619,7 +619,7 @@
     return _Game_Map_canvasToMapY.call(this, y);
   };
 
-  // =========================================================================
+// ----------------【直接替换为这段新代码】----------------
   // 缩放时方向键移动相机 + 允许超出地图边缘（仅当由快捷键触发时生效）
   // =========================================================================
   const _Game_Player_moveByInput = Game_Player.prototype.moveByInput;
@@ -631,31 +631,24 @@
     _Game_Player_moveByInput.call(this);
   };
 
-  // 修正：计算缩放时允许的额外偏移（格子数），使相机可以滚动到地图边缘
-  function getScrollExtra() {
-    const scale = $gameScreen.zoomScale();
-    if (Math.abs(scale - 1.0) <= 0.001) return { extraX: 0, extraY: 0 };
-    const screenWidthPx = Graphics.width;
-    const screenHeightPx = Graphics.height;
-    const tileW = $gameMap.tileWidth();
-    const tileH = $gameMap.tileHeight();
-    const normalWidthInTiles = screenWidthPx / tileW;
-    const normalHeightInTiles = screenHeightPx / tileH;
-    const zoomedWidthInTiles = screenWidthPx / tileW / scale;
-    const zoomedHeightInTiles = screenHeightPx / tileH / scale;
-    // 使用完整差值，确保边缘格子可完全进入视野
-    const deltaX = normalWidthInTiles - zoomedWidthInTiles;
-    const deltaY = normalHeightInTiles - zoomedHeightInTiles;
-    const extraX = Math.ceil(deltaX) + 5;
-    const extraY = Math.ceil(deltaY) + 5;
-    return { extraX, extraY };
-  }
+  // 1. 解除 RM 原生边界封锁，允许镜头移到地图最外围之外
+  const _Game_Map_setDisplayPos = Game_Map.prototype.setDisplayPos;
+  Game_Map.prototype.setDisplayPos = function(x, y) {
+    if ($gameSystem && $gameSystem.zoomFromShortcut && Math.abs($gameScreen.zoomScale() - 1.0) > 0.001) {
+      this._displayX = this.isLoopHorizontal() ? x.mod(this.width()) : x;
+      this._displayY = this.isLoopVertical() ? y.mod(this.height()) : y;
+      this.refreshIfNeeded();
+    } else {
+      _Game_Map_setDisplayPos.call(this, x, y);
+    }
+  };
 
+  // 2. 重写方向键移动镜头（彻底放大移动范围）
   const _Scene_Map_updateCameraMove = Scene_Map.prototype.update;
   Scene_Map.prototype.update = function() {
     _Scene_Map_updateCameraMove.call(this);
     if (!enableCameraMove) return;
-    if (!$gameSystem.zoomFromShortcut) return;   // 只有快捷键缩放才允许移动相机
+    if (!$gameSystem || !$gameSystem.zoomFromShortcut) return;
     const scale = $gameScreen.zoomScale();
     if (Math.abs(scale - 1.0) <= 0.001) return;
 
@@ -673,16 +666,43 @@
     let newDisplayX = $gameMap.displayX() + pixelDx / $gameMap.tileWidth();
     let newDisplayY = $gameMap.displayY() + pixelDy / $gameMap.tileHeight();
 
-    const { extraX, extraY } = getScrollExtra();
+    // 允许向四周多推 25 个格子，确保最边缘格子能轻松移到视野中央
+    const extraTiles = 25; 
     const maxX = $gameMap.width() - Graphics.width / $gameMap.tileWidth();
     const maxY = $gameMap.height() - Graphics.height / $gameMap.tileHeight();
-    const minX = -extraX;
-    const minY = -extraY;
-    const maxXExt = maxX + extraX;
-    const maxYExt = maxY + extraY;
+
+    const minX = -extraTiles;
+    const minY = -extraTiles;
+    const maxXExt = maxX + extraTiles;
+    const maxYExt = maxY + extraTiles;
 
     newDisplayX = Math.min(Math.max(newDisplayX, minX), maxXExt);
     newDisplayY = Math.min(Math.max(newDisplayY, minY), maxYExt);
+
     $gameMap.setDisplayPos(newDisplayX, newDisplayY);
   };
+
+  // 3. 给地图四周增加渲染缓冲区
+  const _Tilemap_createLayers = Tilemap.prototype._createLayers;
+  Tilemap.prototype._createLayers = function() {
+    _Tilemap_createLayers.call(this);
+    this._margin = 20 * this._tileWidth;
+  };
+
+// =========================================================================
+  // 安全版修复：仅在缩放状态下禁用 Pixi 的 Culling，不附加每帧的高消耗操作
+  // =========================================================================
+
+  const _Sprite_Character_update = Sprite_Character.prototype.update;
+  Sprite_Character.prototype.update = function() {
+    _Sprite_Character_update.call(this);
+    
+    // 只有在放大时才关闭裁剪，恢复 1 倍时自动恢复原生性能优化
+    if ($gameScreen && Math.abs($gameScreen.zoomScale() - 1.0) > 0.001) {
+      this.cullable = false;
+    } else {
+      this.cullable = true;
+    }
+  };
+
 })();

@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc 强制角色图片使用点过滤，避免边缘杂色
+ * @plugindesc 像素点过滤增强
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help

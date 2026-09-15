@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc 装备有概率在进攻或防守时被破坏
+ * @plugindesc 装备有概率在进攻或防守时被破坏 
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * 
@@ -109,62 +109,62 @@
  * @default 0
  * @desc 音效的左右声道偏置 (-100 到 100)。
  *
- * @help
- * ============================================================================
- * 简介
- * ============================================================================
- * 本插件为 RPG Maker MZ 提供装备损坏系统，使角色在战斗中的装备有概率
- * 在进攻或防守时被破坏，增加战斗的策略性和真实感。
- * 
- * 每件装备的损坏概率、触发条件和伤害类型均可在备注栏中独立配置，
- * 允许显示提示文字并播放音效。
- * ============================================================================
- * 标签设置（在装备/武器/防具的备注栏中写入）
- * ============================================================================
- * <AtkEquipBreak>       攻击损坏概率使用参数默认值。
- * <AtkEquipBreak:概率>  攻击损坏概率自定义(0-100)。例：<AtkEquipBreak:15>
- * 
- * <DefEquipBreak>       受击损坏概率使用参数默认值。
- * <DefEquipBreak:概率>  受击损坏概率自定义(0-100)。例：<DefEquipBreak:25>
- * 
- * <AtkType:类型>        [攻击类型覆盖] 覆盖该装备的触发攻击类型（基于技能命中类型）。
- *                        示例：
- *                        <AtkType:all>               - 所有攻击
- *                        <AtkType:normal>            - 仅普通攻击
- *                        <AtkType:physical>          - 仅物理技能
- *                        <AtkType:magical>           - 仅魔法技能
- *                        <AtkType:normal_physical>   - 普通攻击 + 物理技能
- *                        <AtkType:normal_magical>    - 普通攻击 + 魔法技能
- *                        <AtkType:physical_magical>  - 物理技能 + 魔法技能
- *
- * <AtkDmgType:类型>     [攻击伤害类型覆盖] 覆盖该装备的触发攻击伤害类型（基于是否造成HP伤害）。
- *                        示例：
- *                        <AtkDmgType:all>            - 所有伤害（无论是否造成HP伤害）
- *                        <AtkDmgType:direct>         - 仅直接伤害（造成HP伤害）
- *
- * <DefType:类型>        [防御类型覆盖] 覆盖该装备的触发防御类型（基于技能命中类型）。
- *                        示例：
- *                        <DefType:all>               - 所有伤害
- *                        <DefType:physical>          - 仅物理攻击
- *                        <DefType:magical>           - 仅魔法攻击
- *                        <DefType:physical_magical>  - 物理攻击 + 魔法攻击
- *
- * <DefDmgType:类型>     [防御伤害类型覆盖] 覆盖该装备的触发防御伤害类型（基于是否造成HP伤害）。
- *                        示例：
- *                        <DefDmgType:all>            - 所有伤害（包括无法造成伤害的技能）
- *                        <DefDmgType:direct>         - 仅直接伤害（造成HP伤害）
- *
- * ============================================================================
- * 说明
- * ============================================================================
- * 1. 损坏的装备会自动脱下，并彻底从队伍背包中移除。
- * 2. <AtkEquipBreak> 与 <DefEquipBreak> 可同时写在一件装备上。
- * 3. 若未填写标签，装备将不参与损坏判定；若填写无参标签，则使用插件默认概率。
- * 4. 技能类型判断基于技能的命中类型（Hit Type）：物理攻击或魔法攻击。
- * 5. 攻击损坏判定需要同时满足：攻击类型条件 AND 攻击伤害类型条件。
- * 6. 防守损坏判定需要同时满足：防御类型条件 AND 防御伤害类型条件。
- * 7. 普通攻击判断基于技能ID是否为1。
- */
+ * @help
+ * ============================================================================
+ * 简介
+ * ============================================================================
+ * 本插件为 RPG Maker MZ 提供装备损坏系统，使角色在战斗中的装备有概率
+ * 在进攻或防守时被破坏，增加战斗的策略性和真实感。
+ * 
+ * 每件装备的损坏概率、触发条件和伤害类型均可在备注栏中独立配置，
+ * 允许显示提示文字并播放音效。
+ * ============================================================================
+ * 标签设置（在装备/武器/防具的备注栏中写入）
+ * ============================================================================
+ * <AtkEquipBreak>       攻击损坏概率使用参数默认值。
+ * <AtkEquipBreak:概率>  攻击损坏概率自定义(0-100)。例：<AtkEquipBreak:15>
+ * 
+ * <DefEquipBreak>       受击损坏概率使用参数默认值。
+ * <DefEquipBreak:概率>  受击损坏概率自定义(0-100)。例：<DefEquipBreak:25>
+ * 
+ * <AtkType:类型>        [攻击类型覆盖] 覆盖该装备的触发攻击类型（基于技能命中类型）。
+ *                        示例：
+ *                        <AtkType:all>               - 所有攻击
+ *                        <AtkType:normal>            - 仅普通攻击
+ *                        <AtkType:physical>          - 仅物理技能
+ *                        <AtkType:magical>           - 仅魔法技能
+ *                        <AtkType:normal_physical>   - 普通攻击 + 物理技能
+ *                        <AtkType:normal_magical>    - 普通攻击 + 魔法技能
+ *                        <AtkType:physical_magical>  - 物理技能 + 魔法技能
+ *
+ * <AtkDmgType:类型>     [攻击伤害类型覆盖] 覆盖该装备的触发攻击伤害类型（基于是否造成HP伤害）。
+ *                        示例：
+ *                        <AtkDmgType:all>            - 所有伤害（无论是否造成HP伤害）
+ *                        <AtkDmgType:direct>         - 仅直接伤害（造成HP伤害）
+ *
+ * <DefType:类型>        [防御类型覆盖] 覆盖该装备的触发防御类型（基于技能命中类型）。
+ *                        示例：
+ *                        <DefType:all>               - 所有伤害
+ *                        <DefType:physical>          - 仅物理攻击
+ *                        <DefType:magical>           - 仅魔法攻击
+ *                        <DefType:physical_magical>  - 物理攻击 + 魔法攻击
+ *
+ * <DefDmgType:类型>     [防御伤害类型覆盖] 覆盖该装备的触发防御伤害类型（基于是否造成HP伤害）。
+ *                        示例：
+ *                        <DefDmgType:all>            - 所有伤害（包括无法造成伤害的技能）
+ *                        <DefDmgType:direct>         - 仅直接伤害（造成HP伤害）
+ *
+ * ============================================================================
+ * 说明
+ * ============================================================================
+ * 1. 损坏的装备会自动脱下，并彻底从队伍背包中移除。
+ * 2. <AtkEquipBreak> 与 <DefEquipBreak> 可同时写在一件装备上。
+ * 3. 若未填写标签，装备将不参与损坏判定；若填写无参标签，则使用插件默认概率。
+ * 4. 技能类型判断基于技能的命中类型（Hit Type）：物理攻击或魔法攻击。
+ * 5. 攻击损坏判定需要同时满足：攻击类型条件 AND 攻击伤害类型条件。
+ * 6. 防守损坏判定需要同时满足：防御类型条件 AND 防御伤害类型条件。
+ * 7. 普通攻击判断基于技能ID是否为1。
+ */
 
 (function() {
     'use strict';
@@ -259,7 +259,7 @@
                 item._atkBreakRate = 0;
             }
 
-            // 攻击类型 <AtkType:类型>（基于技能命中类型）
+            // 攻击类型 <AtkType:类型>
             const atkTypeMatch = item.note.match(/<AtkType\s*:\s*(\w+)>/i);
             if (atkTypeMatch) {
                 const typeStr = atkTypeMatch[1].toLowerCase();
@@ -273,7 +273,7 @@
                 item._atkType = defaultAtkTypeKey;
             }
 
-            // 攻击伤害类型 <AtkDmgType:类型>（基于是否造成HP伤害）
+            // 攻击伤害类型 <AtkDmgType:类型>
             const atkDmgTypeMatch = item.note.match(/<AtkDmgType\s*:\s*(\w+)>/i);
             if (atkDmgTypeMatch) {
                 const typeStr = atkDmgTypeMatch[1].toLowerCase();
@@ -287,7 +287,7 @@
                 item._atkDmgType = defaultAtkDmgTypeKey;
             }
 
-            // 防御类型 <DefType:类型>（基于技能命中类型）
+            // 防御类型 <DefType:类型>
             const defTypeMatch = item.note.match(/<DefType\s*:\s*(\w+)>/i);
             if (defTypeMatch) {
                 const typeStr = defTypeMatch[1].toLowerCase();
@@ -301,7 +301,7 @@
                 item._defType = defaultDefTypeKey;
             }
 
-            // 防御伤害类型 <DefDmgType:类型>（基于是否造成HP伤害）
+            // 防御伤害类型 <DefDmgType:类型>
             const defDmgTypeMatch = item.note.match(/<DefDmgType\s*:\s*(\w+)>/i);
             if (defDmgTypeMatch) {
                 const typeStr = defDmgTypeMatch[1].toLowerCase();
@@ -350,30 +350,27 @@
     }
 
     // ==========================================================================
-    // 攻击伤害类型判断工具（基于是否造成HP伤害）
+    // 攻击伤害类型判断工具（根据实际结算结果修复）
     // ==========================================================================
-    function isAtkDamageTypeValid(equip, action) {
+    function isAtkDamageTypeValid(equip, action, target) {
         const atkDmgType = equip._atkDmgType || defaultAtkDmgTypeKey;
         if (atkDmgType === 'all') return true;
 
-        // 对于攻击，我们需要判断这次行动是否会造成HP伤害
-        // 由于执行伤害时已经是在攻击之后，我们检查行动是否有伤害效果
         switch (atkDmgType) {
             case 'direct':
-                // 检查行动是否会对目标造成HP伤害
-                // 这里通过检查行动是否有伤害计算公式来判断
-                const item = action.item();
-                if (!item) return false;
-                // 检查技能/物品是否有伤害效果
-                const hasDamage = (item.damage && item.damage.type > 0);
-                return hasDamage;
+                // 仅当实际成功造成了大于 0 的 HP 伤害时触发
+                if (target && target.result()) {
+                    const result = target.result();
+                    return result.hpDamage > 0;
+                }
+                return false;
             default:
                 return true;
         }
     }
 
     // ==========================================================================
-    // 防御类型判断工具（基于技能命中类型）
+    // 防御类型判断工具
     // ==========================================================================
     function isDefenseTypeValid(equip, action) {
         const defType = equip._defType || defaultDefTypeKey;
@@ -396,7 +393,7 @@
     }
 
     // ==========================================================================
-    // 防御伤害类型判断工具（基于是否造成HP伤害）
+    // 防御伤害类型判断工具
     // ==========================================================================
     function isDefDamageTypeValid(equip, damageValue) {
         const defDmgType = equip._defDmgType || defaultDefDmgTypeKey;
@@ -431,8 +428,38 @@
     const _Game_Action_apply = Game_Action.prototype.apply;
     Game_Action.prototype.apply = function(target) {
         _Game_Action_apply.call(this, target);
+        
+        // 修正逻辑 2：进攻判定
+        // 1. 只有当攻击真正命中（没有 Miss / 没有被闪避）时才继续判定
+        if (target && target.result() && target.result().isHit()) {
+            const subject = this.subject();
+            if (subject && subject.isActor()) {
+                if (repeatCheckEnabled) {
+                    subject.checkEquipBreakOnAttack(this, target);
+                } else {
+                    // 如果关闭了多段判定，确保整个行动过程只判定 1 次
+                    subject._atkBreakCheckedActions = subject._atkBreakCheckedActions || [];
+                    if (!subject._atkBreakCheckedActions.includes(this)) {
+                        subject._atkBreakCheckedActions.push(this);
+                        subject.checkEquipBreakOnAttack(this, target);
+                    }
+                }
+            }
+        }
+
+        // 清理防御标记
         if (target && target._defBreakCheckedTargets) {
             target._defBreakCheckedTargets = [];
+        }
+    };
+
+    // 在行动开始/结束时重置一次性攻击判定标记
+    const _Game_Action_clear = Game_Action.prototype.clear;
+    Game_Action.prototype.clear = function() {
+        _Game_Action_clear.call(this);
+        const subject = this.subject ? this.subject() : null;
+        if (subject && subject._atkBreakCheckedActions) {
+            subject._atkBreakCheckedActions = [];
         }
     };
 
@@ -447,10 +474,7 @@
             const rate = equip._defBreakRate;
             if (!rate || rate <= 0) continue;
 
-            // 检查防御类型是否有效（基于技能命中类型）
             if (!isDefenseTypeValid(equip, action)) continue;
-
-            // 检查防御伤害类型是否有效（基于是否造成HP伤害）
             if (!isDefDamageTypeValid(equip, damageValue)) continue;
 
             if (Math.random() * 100 < rate) {
@@ -462,30 +486,6 @@
         if (brokenAny) this.refresh();
     };
 
-    // ==========================================================================
-    // 逻辑 2：进攻判定（出招/命中时）
-    // ==========================================================================
-    const _Game_Action_applyGlobal = Game_Action.prototype.apply;
-    Game_Action.prototype.apply = function(target) {
-        _Game_Action_applyGlobal.call(this, target);
-        
-        if (repeatCheckEnabled) {
-            const subject = this.subject();
-            if (subject && subject.isActor()) {
-                subject.checkEquipBreakOnAttack(this, target);
-            }
-        }
-    };
-
-    const _Game_Actor_performAction = Game_Actor.prototype.performAction;
-    Game_Actor.prototype.performAction = function(action) {
-        _Game_Actor_performAction.call(this, action);
-        
-        if (!repeatCheckEnabled) {
-            this.checkEquipBreakOnAttack(action, null);
-        }
-    };
-
     Game_Actor.prototype.checkEquipBreakOnAttack = function(action, target) {
         const equips = this.equips();
         let brokenAny = false;
@@ -494,11 +494,11 @@
             const equip = equips[i];
             if (!equip) continue;
 
-            // 检查攻击类型是否有效（基于技能命中类型）
+            // 检查攻击类型
             if (!isAttackTypeValid(equip, action)) continue;
 
-            // 检查攻击伤害类型是否有效（基于是否造成HP伤害）
-            if (!isAtkDamageTypeValid(equip, action)) continue;
+            // 检查攻击伤害类型（现在会精确检查 target 的真实伤害结算）
+            if (!isAtkDamageTypeValid(equip, action, target)) continue;
 
             const rate = equip._atkBreakRate;
             if (!rate || rate <= 0) continue;

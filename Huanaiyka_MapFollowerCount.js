@@ -2,6 +2,7 @@
  * @target MZ
  * @plugindesc 改变地图上的跟随者数量
  * @author 幻爱
+ * @url https://github.com/huanaiyka/MZ-Plugins
  * @help 
  * =============================================================================
  * 插件说明

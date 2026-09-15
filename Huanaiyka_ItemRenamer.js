@@ -7,9 +7,9 @@
  * ============================================================================
  * 功能概述
  * ============================================================================
- * 本插件直接修改内存中的数据库条目，所有窗口自动显示修改后的名称和说明。
- * 修改记录保存在存档中，读档后自动恢复。
-============================================================================
+ * 本插件动态修改内存中的数据库条目，所有窗口自动显示修改后的名称和说明。
+ * 修改记录随存档保存。
+ * ============================================================================
  * 插件指令列表
  * ============================================================================
  *   RenameItem <物品ID> <新名称>          - 修改物品名称
@@ -19,7 +19,7 @@
  *   RenameWeaponDesc <武器ID> <新说明>    - 修改武器说明
  *   RenameArmorDesc <防具ID> <新说明>     - 修改防具说明
  *
-============================================================================
+ * ============================================================================
  * 脚本调用
  * ============================================================================
  *   $gameSystem.setRenamedItemName('i', id, '新名称');
@@ -100,6 +100,9 @@
 (() => {
     const pluginName = 'Huanaiyka_ItemRenamer';
 
+    // ---------- 存储最原始的数据库备份（防止污染全局数据） ----------
+    const _globalOriginalData = { i: {}, w: {}, a: {} };
+
     // ---------- 辅助：将字符串中的 \n 转义为数据库可识别的换行符 ----------
     function escapeNewlines(str) {
         if (typeof str !== 'string') return '';
@@ -114,6 +117,34 @@
         return null;
     }
 
+    // ---------- 备份原始数据库字段 ----------
+    function ensureBackup(type, id) {
+        const data = getDataArray(type);
+        if (!data || !data[id]) return;
+
+        if (!_globalOriginalData[type][id]) {
+            _globalOriginalData[type][id] = {
+                name: data[id].name,
+                description: data[id].description
+            };
+        }
+    }
+
+    // ---------- 还原所有数据库属性到软件最初加载的状态 ----------
+    function restoreGlobalOriginals() {
+        ['i', 'w', 'a'].forEach(type => {
+            const data = getDataArray(type);
+            if (!data) return;
+            const backups = _globalOriginalData[type];
+            Object.keys(backups).forEach(id => {
+                if (data[id]) {
+                    data[id].name = backups[id].name;
+                    data[id].description = backups[id].description;
+                }
+            });
+        });
+    }
+
     // ---------- Game_System 扩展 ----------
     const _Game_System_initialize = Game_System.prototype.initialize;
     Game_System.prototype.initialize = function() {
@@ -126,6 +157,8 @@
 
     // ---------- 应用所有修改到数据库 ----------
     Game_System.prototype.applyAllRenames = function() {
+        restoreGlobalOriginals();
+
         const types = ['i', 'w', 'a'];
         types.forEach(type => {
             const data = getDataArray(type);
@@ -137,8 +170,9 @@
                     const id = parseInt(key.slice(1));
                     const newName = this._renamedItemNames[key];
                     if (data[id]) {
+                        ensureBackup(type, id);
                         if (!this._originalItemNames[key]) {
-                            this._originalItemNames[key] = data[id].name;
+                            this._originalItemNames[key] = _globalOriginalData[type][id].name;
                         }
                         data[id].name = newName;
                     }
@@ -151,8 +185,9 @@
                     const id = parseInt(key.slice(1));
                     const newDesc = this._renamedItemDescs[key];
                     if (data[id]) {
+                        ensureBackup(type, id);
                         if (!this._originalItemDescs[key]) {
-                            this._originalItemDescs[key] = data[id].description;
+                            this._originalItemDescs[key] = _globalOriginalData[type][id].description;
                         }
                         data[id].description = newDesc;
                     }
@@ -167,13 +202,15 @@
         const data = getDataArray(type);
         if (!data || !data[id]) return;
 
+        ensureBackup(type, id);
+
         if (this._originalItemNames[key] !== undefined) {
-            data[id].name = this._originalItemNames[key];
+            data[id].name = _globalOriginalData[type][id].name;
             delete this._originalItemNames[key];
             delete this._renamedItemNames[key];
         }
         if (this._originalItemDescs[key] !== undefined) {
-            data[id].description = this._originalItemDescs[key];
+            data[id].description = _globalOriginalData[type][id].description;
             delete this._originalItemDescs[key];
             delete this._renamedItemDescs[key];
         }
@@ -185,9 +222,11 @@
         const data = getDataArray(type);
         if (!data || !data[id]) return;
 
+        ensureBackup(type, id);
+
         // 备份原名
         if (this._originalItemNames[key] === undefined) {
-            this._originalItemNames[key] = data[id].name;
+            this._originalItemNames[key] = _globalOriginalData[type][id].name;
         }
 
         if (newName && newName !== '') {
@@ -196,10 +235,8 @@
         } else {
             // 恢复默认
             delete this._renamedItemNames[key];
-            if (this._originalItemNames[key] !== undefined) {
-                data[id].name = this._originalItemNames[key];
-                delete this._originalItemNames[key];
-            }
+            data[id].name = _globalOriginalData[type][id].name;
+            delete this._originalItemNames[key];
         }
     };
 
@@ -209,9 +246,11 @@
         const data = getDataArray(type);
         if (!data || !data[id]) return;
 
+        ensureBackup(type, id);
+
         // 备份原说明
         if (this._originalItemDescs[key] === undefined) {
-            this._originalItemDescs[key] = data[id].description;
+            this._originalItemDescs[key] = _globalOriginalData[type][id].description;
         }
 
         if (newDesc && newDesc !== '') {
@@ -221,19 +260,17 @@
         } else {
             // 恢复默认
             delete this._renamedItemDescs[key];
-            if (this._originalItemDescs[key] !== undefined) {
-                data[id].description = this._originalItemDescs[key];
-                delete this._originalItemDescs[key];
-            }
+            data[id].description = _globalOriginalData[type][id].description;
+            delete this._originalItemDescs[key];
         }
     };
 
     // ---------- 获取方法 ----------
     Game_System.prototype.getRenamedItemName = function(type, id) {
-        return this._renamedItemNames[type + id] || null;
+        return this._renamedItemNames ? this._renamedItemNames[type + id] || null : null;
     };
     Game_System.prototype.getRenamedItemDesc = function(type, id) {
-        return this._renamedItemDescs[type + id] || null;
+        return this._renamedItemDescs ? this._renamedItemDescs[type + id] || null : null;
     };
 
     // ---------- 插件命令注册 ----------
@@ -281,9 +318,17 @@
     const _DataManager_setupNewGame = DataManager.setupNewGame;
     DataManager.setupNewGame = function() {
         _DataManager_setupNewGame.call(this);
+        restoreGlobalOriginals();
         if ($gameSystem && $gameSystem.applyAllRenames) {
             $gameSystem.applyAllRenames();
         }
+    };
+
+    // ---------- 关键修复：返回主菜单时强制还原数据库真实原始数据 ----------
+    const _Scene_Title_start = Scene_Title.prototype.start;
+    Scene_Title.prototype.start = function() {
+        _Scene_Title_start.call(this);
+        restoreGlobalOriginals();
     };
 
     // ---------- 劫持 Window_Help.setItem 强制使用 setText 保证换行 ----------

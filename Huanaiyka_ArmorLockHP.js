@@ -93,7 +93,7 @@
  */
 
 (() => {
-    const parameters = PluginManager.parameters('ArmorLockHP');
+    const parameters = PluginManager.parameters('Huanaiyka_ArmorLockHP');
     const lockMessage = parameters['LockMessage'] || "%1 破碎了，保护了 %2！";
     const luckyMessage = parameters['LuckyMessage'] || "%1 触发了守护效果，保护了 %2！";
 

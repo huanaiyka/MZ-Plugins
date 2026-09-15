@@ -300,14 +300,16 @@
     // 道具存储/恢复相关函数
     // ============================================================================
 
-    function parseItemTypes(typeStr) {
-        const validTypes = ['item', 'weapon', 'armor', 'key'];
-        if (!typeStr || typeStr.trim() === '') {
-            return validTypes.slice();
-        }
-        return typeStr.split(',').map(s => s.trim().toLowerCase()).filter(t => validTypes.includes(t));
+function parseItemTypes(typeStr) {
+    const validTypes = ['item', 'weapon', 'armor', 'key'];
+    // 强制转换为字符串，避免非 string 类型调用 trim() 报错
+    const str = String(typeStr || '').trim();
+    
+    if (!str) {
+        return validTypes.slice();
     }
-
+    return str.split(',').map(s => s.trim().toLowerCase()).filter(t => validTypes.includes(t));
+}
     function getItemData(itemTypes) {
         const data = { item: [], weapon: [], armor: [], key: [] };
         

@@ -6,152 +6,151 @@
  * @plugindesc NPC更自然地跟随玩家
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
- * @help
- * ============================================================================
- * 简介
- * ============================================================================
- * 让事件像同伴一样跟随玩家移动，具备自动寻路、距离延迟、阶梯加速、
- * 移动/转向独立控制等功能。
- * 【核心】支持备注标签和插件指令双重控制方式。
- *
- * ============================================================================
- * 使用方法
- * ============================================================================
- * 1. 事件备注标签（在事件编辑器的备注栏中添加）：
- *    <follow>                    启用跟随（默认关闭）
- *    <follow speed:3>            跟随速度 1~6
- *    <follow distance:2>         停止跟随的距离（格子数）
- *    <follow teleport:true>      切换地图时自动传送到玩家位置（默认 true）
- *
- * 2. 事件触发条件：推荐「确定键」或「玩家接触」
- * 3. 事件优先级：必须设为「与普通角色相同」
- * 4. 移动路线：保持「无」
- *
- * ============================================================================
- * 插件指令
- * ============================================================================
- *
- * 【全局控制】
- *   EventFollowEnableAll    : 所有带 <follow> 标签的事件自动启用跟随
- *   EventFollowDisableAll   : 所有带 <follow> 标签的事件禁用跟随
- *   【注意】全局指令的状态会保存在存档中，切换地图时自动生效
- *
- * 【单个事件控制】
- *   EventFollowEnable       : 启用跟随（移动+转向全开）
- *   EventFollowDisable      : 禁用跟随（完全停止，不走动+不转向）
- *   EventFollowDisableMove  : 禁用移动（停在原地，但仍自动转向玩家）
- *   EventFollowEnableMove   : 恢复移动+转向（完全恢复跟随）
- *   EventFollowDisableTurn  : 禁用转向（仅当移动禁用时生效）
- *   EventFollowEnableTurn   : 恢复转向（仅当移动禁用时生效）
- *   EventFollowEnableTele   : 启用地图传送（切换地图时自动传送到玩家位置）
- *   EventFollowDisableTele  : 禁用地图传送（切换地图时留在原地）
- *
- * 【参数说明】
- *   所有指令都带有"事件ID"参数，填写目标事件编号。
- *   填 0 或不填表示"当前事件"（即执行该指令的事件自身）。
- *   【改进】在公共事件中使用时，会自动识别调用该公共事件的原始事件。
- *   EventFollowEnableAll / EventFollowDisableAll 不需要事件ID参数。
- *
- * 【全局开关状态】
- *   全局开启/关闭的状态会保存在 $gameSystem 中，读档后自动恢复。
- *   切换地图时，插件会自动根据全局状态处理所有带标签的事件。
- *
- * ============================================================================
- * 地图传送说明
- * ============================================================================
- * 地图传送仅在"回到原地图"时生效（即从其他地图切回之前标记的地图）。
- * 例如：事件在 MAP001 被标记为跟随，玩家从 MAP001 传到 MAP002 再传回 MAP001 时，
- * 事件会自动传送到玩家位置。如果从 MAP001 传到 MAP002，事件不会跟随传送。
- *
- * ============================================================================
- * 实战示例
- * ============================================================================
- *
- * 示例1：在事件备注中添加 <follow>，然后使用全局启用
- *   插件指令：EventFollowEnableAll
- *   效果：当前地图所有带 <follow> 标签的事件开始跟随
- *
- * 示例2：全局关闭所有跟随
- *   插件指令：EventFollowDisableAll
- *   效果：所有带 <follow> 标签的事件停止跟随
- *
- * 示例3：让事件3开始跟随玩家（单独控制）
- *   插件指令：EventFollowEnable 事件ID:3
- *
- * 示例4：让事件3停止跟随
- *   插件指令：EventFollowDisable 事件ID:3
- *
- * 示例5：事件只在回到原地图时传送
- *   插件指令：EventFollowEnable 事件ID:3
- *   插件指令：EventFollowEnableTele 事件ID:3
- *
- * 示例6：在公共事件中控制调用者自身（无需指定ID）
- *   公共事件内容：插件指令 EventFollowEnable
- *   地图事件调用该公共事件后，自身会开启跟随
- *
- * ============================================================================
- * 插件参数
- * ============================================================================
- * - 默认跟随速度        : 基础移动速度（1慢～6快）
- * - 默认跟随距离        : 事件与玩家距离小于等于该值时停止移动
- * - 距离类型            : 十字相邻（曼哈顿距离） / 九宫格相邻（切比雪夫距离）
- * - 启用自动跑步        : 是否根据距离自动提高速度（总开关）
- * - 启用阶梯加速        : 距离越远，速度呈阶梯式增长（只增不减，避免频繁变速）
- * - 跑步触发距离        : 大于此距离开始加速
- * - 阶梯步长距离        : 每增加此距离，速度提升一档
- * - 每步速度增量        : 每超过一个步长，速度增加的档位数（1~3）
- * - 最大跑步速度        : 阶梯加速的上限（1~6）
- * - 直接跑步速度        : 若关闭阶梯加速，达到触发距离后直接改用该速度
- * - 跟随延迟模式        : 时间模式（等待固定帧数）/ 距离模式（玩家走远几格再跟）
- * - 延迟时间（帧）      : 时间模式下的等待帧数
- * - 延迟距离（格）      : 距离模式下，玩家需要超出事件多少格才触发移动
- * - 地图传送延迟模式    : 立即传送 / 延迟传送（等待固定帧数后再传送）
- * - 地图传送延迟（帧）  : 延迟模式下的等待帧数，60帧≈1秒
- *
- * ============================================================================
- * 常见问题
- * ============================================================================
- * Q1：全局开启/关闭状态会保存到存档吗？
- * A1：会的，所有全局状态都保存在 $gameSystem 中，读档后自动恢复。
- *
- * Q2：切换地图后全局开启还会生效吗？
- * A2：会的，切换地图时会自动检测全局开启状态，重新应用所有带标签的事件。
- *
- * Q3：单独控制的指令和全局指令冲突怎么办？
- * A3：单独控制的指令具有最高优先级，不会被全局指令覆盖。
- *     如果事件被单独禁用，全局开启不会重新启用它。
- *
- * Q4：地图传送为什么只在回到原地图时生效？
- * A4：这是为了避免事件在切换地图时出现在错误的位置。
- *
- * Q5：在公共事件中使用插件指令，能识别"当前事件"吗？
- * A5：可以！插件会自动追踪调用公共事件的原始事件，无需手动指定ID。
- *
- * ============================================================================
- * 更新日志
- * ============================================================================
- * v2.7 (2026-07-21)
- *   - 重大改进：公共事件中也能智能识别"当前事件"
- *   - 通过事件调用栈追踪原始调用者
- *
- * v2.6 (2026-07-21)
- *   - 新增"全局关闭"指令 EventFollowDisableAll
- *   - 全局开启/关闭状态保存到存档
- *   - 切换地图时自动检测全局状态，重新应用所有带标签的事件
- *   - 单独控制的指令优先级高于全局指令
- *
- * v2.5 (2026-07-21)
- *   - 插件指令改为每项独立command，符合MZ规范
- *
- * v2.4 (2026-07-21)
- *   - 地图传送改为"仅限回到原地图"时生效
- *
- * v2.3 (2026-07-21)
- *   - 新增备注标签支持
- *   - 新增"开启全局跟随"指令
- *
- * ============================================================================
- * @command EventFollowEnableAll
+ * @help
+ * ============================================================================
+ * 简介
+ * ============================================================================
+ * 让事件像同伴一样跟随玩家移动，具备自动寻路、距离延迟、阶梯加速、
+ * 移动/转向独立控制等功能。
+ * 支持备注标签和插件指令双重控制方式。
+ *
+ * ============================================================================
+ * 使用方法
+ * ============================================================================
+ * 1. 事件备注标签（在事件编辑器的备注栏中添加）：
+ *    <follow>                    启用跟随（默认关闭）
+ *    <follow speed:3>            跟随速度 1~6
+ *    <follow distance:2>         停止跟随的距离（格子数）
+ *    <follow teleport:true>      切换地图时自动传送到玩家位置（默认 true）
+ *
+ * 2. 事件触发条件：推荐「确定键」或「玩家接触」
+ * 3. 事件优先级：必须设为「与普通角色相同」
+ * 4. 移动路线：保持「无」
+ *
+ * ============================================================================
+ * 插件指令
+ * ============================================================================
+ *
+ * 【全局控制】
+ *   EventFollowEnableAll    : 所有带 <follow> 标签的事件自动启用跟随
+ *   EventFollowDisableAll   : 所有带 <follow> 标签的事件禁用跟随
+ *   【注意】全局指令的状态会保存在存档中，切换地图时自动生效
+ *
+ * 【单个事件控制】
+ *   EventFollowEnable       : 启用跟随（移动+转向全开）
+ *   EventFollowDisable      : 禁用跟随（完全停止，不走动+不转向）
+ *   EventFollowDisableMove  : 禁用移动（停在原地，但仍自动转向玩家）
+ *   EventFollowEnableMove   : 恢复移动+转向（完全恢复跟随）
+ *   EventFollowDisableTurn  : 禁用转向（仅当移动禁用时生效）
+ *   EventFollowEnableTurn   : 恢复转向（仅当移动禁用时生效）
+ *   EventFollowEnableTele   : 启用地图传送（切换地图时自动传送到玩家位置）
+ *   EventFollowDisableTele  : 禁用地图传送（切换地图时留在原地）
+ *
+ * 【参数说明】
+ *   所有指令都带有"事件ID"参数，填写目标事件编号。
+ *   填 0 或不填表示"当前事件"（即执行该指令的事件自身）。
+ *   【改进】在公共事件中使用时，会自动识别调用该公共事件的原始事件。
+ *   EventFollowEnableAll / EventFollowDisableAll 不需要事件ID参数。
+ *
+ * 【全局开关状态】
+ *   全局开启/关闭的状态会保存在 $gameSystem 中，读档后自动恢复。
+ *   切换地图时，插件会自动根据全局状态处理所有带标签的事件。
+ *
+ * ============================================================================
+ * 地图传送说明
+ * ============================================================================
+ * 地图传送仅在"回到原地图"时生效（即从其他地图切回之前标记的地图）。
+ * 例如：事件在 MAP001 被标记为跟随，玩家从 MAP001 传到 MAP002 再传回 MAP001 时，
+ * 事件会自动传送到玩家位置。如果从 MAP001 传到 MAP002，事件不会跟随传送。
+ *
+ * ============================================================================
+ * 实战示例
+ * ============================================================================
+ *
+ * 示例1：在事件备注中添加 <follow>，然后使用全局启用
+ *   插件指令：EventFollowEnableAll
+ *   效果：当前地图所有带 <follow> 标签的事件开始跟随
+ *
+ * 示例2：全局关闭所有跟随
+ *   插件指令：EventFollowDisableAll
+ *   效果：所有带 <follow> 标签的事件停止跟随
+ *
+ * 示例3：让事件3开始跟随玩家（单独控制）
+ *   插件指令：EventFollowEnable 事件ID:3
+ *
+ * 示例4：让事件3停止跟随
+ *   插件指令：EventFollowDisable 事件ID:3
+ *
+ * 示例5：事件只在回到原地图时传送
+ *   插件指令：EventFollowEnable 事件ID:3
+ *   插件指令：EventFollowEnableTele 事件ID:3
+ *
+ * 示例6：在公共事件中控制调用者自身（无需指定ID）
+ *   公共事件内容：插件指令 EventFollowEnable
+ *   地图事件调用该公共事件后，自身会开启跟随
+ *
+ * ============================================================================
+ * 插件参数
+ * ============================================================================
+ * - 默认跟随速度        : 基础移动速度（1慢～6快）
+ * - 默认跟随距离        : 事件与玩家距离小于等于该值时停止移动
+ * - 距离类型            : 十字相邻（曼哈顿距离） / 九宫格相邻（切比雪夫距离）
+ * - 启用自动跑步        : 是否根据距离自动提高速度（总开关）
+ * - 启用阶梯加速        : 距离越远，速度呈阶梯式增长（只增不减，避免频繁变速）
+ * - 跑步触发距离        : 大于此距离开始加速
+ * - 阶梯步长距离        : 每增加此距离，速度提升一档
+ * - 每步速度增量        : 每超过一个步长，速度增加的档位数（1~3）
+ * - 最大跑步速度        : 阶梯加速的上限（1~6）
+ * - 直接跑步速度        : 若关闭阶梯加速，达到触发距离后直接改用该速度
+ * - 跟随延迟模式        : 时间模式（等待固定帧数）/ 距离模式（玩家走远几格再跟）
+ * - 延迟时间（帧）      : 时间模式下的等待帧数
+ * - 延迟距离（格）      : 距离模式下，玩家需要超出事件多少格才触发移动
+ * - 地图传送延迟模式    : 立即传送 / 延迟传送（等待固定帧数后再传送）
+ * - 地图传送延迟（帧）  : 延迟模式下的等待帧数，60帧≈1秒
+ *
+ * ============================================================================
+ * 常见问题
+ * ============================================================================
+ * Q1：全局开启/关闭状态会保存到存档吗？
+ * A1：会的，所有全局状态都保存在 $gameSystem 中，读档后自动恢复。
+ *
+ * Q2：切换地图后全局开启还会生效吗？
+ * A2：会的，切换地图时会自动检测全局开启状态，重新应用所有带标签的事件。
+ *
+ * Q3：单独控制的指令和全局指令冲突怎么办？
+ * A3：单独控制的指令具有最高优先级，不会被全局指令覆盖。
+ *     如果事件被单独禁用，全局开启不会重新启用它。
+ *
+ * Q4：地图传送为什么只在回到原地图时生效？
+ * A4：这是为了避免事件在切换地图时出现在错误的位置。
+ *
+ * Q5：在公共事件中使用插件指令，能识别"当前事件"吗？
+ * A5：可以！插件会自动追踪调用公共事件的原始事件，无需手动指定ID。
+ *
+ * ============================================================================
+ * 更新日志
+ * ============================================================================
+ * v2.7 (2026-07-21)
+ *   - 重大改进：公共事件中也能智能识别"当前事件"
+ *   - 通过事件调用栈追踪原始调用者
+ *
+ * v2.6 (2026-07-21)
+ *   - 新增"全局关闭"指令 EventFollowDisableAll
+ *   - 全局开启/关闭状态保存到存档
+ *   - 切换地图时自动检测全局状态，重新应用所有带标签的事件
+ *   - 单独控制的指令优先级高于全局指令
+ *
+ * v2.5 (2026-07-21)
+ *   - 插件指令改为每项独立command，符合MZ规范
+ *
+ * v2.4 (2026-07-21)
+ *   - 地图传送改为"仅限回到原地图"时生效
+ *
+ * v2.3 (2026-07-21)
+ *   - 新增备注标签支持
+ *   - 新增"开启全局跟随"指令
+ *
+ * ============================================================================ * @command EventFollowEnableAll
  * @text 开启全局跟随
  * @desc 所有带 <follow> 标签的事件自动启用跟随（状态会保存到存档）
  *
@@ -339,6 +338,12 @@
  * @max 20
  * @default 2
  *
+ * @param enableMapTeleport
+ * @text 是否开启地图传送
+ * @desc 地图传送总开关。默认关闭(false)，开启后切换地图（回到原地图）时自动将事件传送到玩家位置
+ * @type boolean
+ * @default false
+ *
  * @param teleportDelayMode
  * @text 地图传送延迟模式
  * @desc 切换地图后事件传送到玩家位置的方式。立即传送 / 延迟传送（等待固定帧数）
@@ -357,7 +362,12 @@
  */
 
 (() => {
-    const params = PluginManager.parameters('Huanaiyka_EventFollow');
+    const pluginName = 'Huanaiyka_EventFollow';
+    const params = PluginManager.parameters(pluginName);
+    
+    // 全局地图传送总开关参数（默认为 false）
+    const enableMapTeleportParam = params['enableMapTeleport'] === 'true';
+    
     const defaultSpeed = Number(params['defaultSpeed'] || 3);
     const defaultDistance = Number(params['defaultDistance'] || 2);
     const autoRunEnable = params['autoRunEnable'] !== 'false';
@@ -381,35 +391,48 @@
     const MIN_SPEED = 1;
     const MAX_SPEED = 6;
 
-    // ============================================================
-    // 状态存储：$gameSystem（可存档）
-    // ============================================================
-    if (!Game_System.prototype._followEnabledMap) {
-        Game_System.prototype._followEnabledMap = {};
-    }
-    if (!Game_System.prototype._followMoveDisabledMap) {
-        Game_System.prototype._followMoveDisabledMap = {};
-    }
-    if (!Game_System.prototype._followTurnWhenMoveDisabledMap) {
-        Game_System.prototype._followTurnWhenMoveDisabledMap = {};
-    }
-    if (!Game_System.prototype._followTeleportEnabledMap) {
-        Game_System.prototype._followTeleportEnabledMap = {};
-    }
-    if (!Game_System.prototype._followOriginalMapId) {
-        Game_System.prototype._followOriginalMapId = {};
-    }
-    // 全局跟随状态：true=开启，false=关闭，undefined=未设置
-    if (Game_System.prototype._followGlobalEnabled === undefined) {
-        Game_System.prototype._followGlobalEnabled = false;
-    }
-
-    if (window._followTeleportedThisMap === undefined) {
+    // 清理非存档全局内存的辅助函数
+    function resetRuntimeCaches() {
         window._followTeleportedThisMap = new Set();
-    }
-    if (window._followTeleportDelayCounter === undefined) {
         window._followTeleportDelayCounter = {};
     }
+
+    // 初始化运行时缓存
+    resetRuntimeCaches();
+
+    // ============================================================
+    // Game_System 存取与重置
+    // ============================================================
+    const _Game_System_initialize = Game_System.prototype.initialize;
+    Game_System.prototype.initialize = function() {
+        _Game_System_initialize.call(this);
+        this.initFollowData();
+    };
+
+    Game_System.prototype.initFollowData = function() {
+        this._followEnabledMap = {};
+        this._followMoveDisabledMap = {};
+        this._followTurnWhenMoveDisabledMap = {};
+        this._followTeleportEnabledMap = {};
+        this._followOriginalMapId = {};
+        this._followGlobalEnabled = false;
+    };
+
+    // 安全获取 Game_System 中的集合对象（防止读取旧档报错）
+    function getSystemData(key, defaultVal = {}) {
+        if (!$gameSystem) return defaultVal;
+        if ($gameSystem[key] === undefined) {
+            $gameSystem[key] = defaultVal;
+        }
+        return $gameSystem[key];
+    }
+
+    // 重写 Game_Title/DataManager 相关逻辑，确保退回主菜单或新游戏时重置内存缓存
+    const _Scene_Title_start = Scene_Title.prototype.start;
+    Scene_Title.prototype.start = function() {
+        _Scene_Title_start.call(this);
+        resetRuntimeCaches();
+    };
 
     function getEventKey(event) {
         return $gameMap.mapId() + "_" + event._eventId;
@@ -419,7 +442,7 @@
     // 备注标签解析
     // ============================================================
     function parseEventNote(event) {
-        const note = event.event().note || "";
+        const note = (event.event() && event.event().note) ? event.event().note : "";
         const lines = note.split('\n');
         let hasFollow = false;
         let speed = null;
@@ -452,20 +475,33 @@
     // 全局跟随：根据备注标签启用/禁用所有事件
     // ============================================================
     function enableAllFollowByNote() {
-        $gameSystem._followGlobalEnabled = true;
+        if ($gameSystem) {
+            $gameSystem._followGlobalEnabled = true;
+        }
         applyGlobalFollowState();
     }
 
     function disableAllFollowByNote() {
-        $gameSystem._followGlobalEnabled = false;
+        if ($gameSystem) {
+            $gameSystem._followGlobalEnabled = false;
+        }
         applyGlobalFollowState();
     }
 
     function applyGlobalFollowState() {
+        if (!$gameSystem || !$gameMap) return;
         const events = $gameMap._events;
+        if (!events) return;
+        
         const currentMapId = $gameMap.mapId();
         const globalEnabled = $gameSystem._followGlobalEnabled === true;
         
+        const followEnabledMap = getSystemData('_followEnabledMap');
+        const followMoveDisabledMap = getSystemData('_followMoveDisabledMap');
+        const followTurnWhenMoveDisabledMap = getSystemData('_followTurnWhenMoveDisabledMap');
+        const followTeleportEnabledMap = getSystemData('_followTeleportEnabledMap');
+        const followOriginalMapId = getSystemData('_followOriginalMapId');
+
         for (let i = 1; i < events.length; i++) {
             const ev = events[i];
             if (!ev) continue;
@@ -473,15 +509,13 @@
             const noteData = parseEventNote(ev);
             if (!noteData.hasFollow) continue;
             
-            // 检查是否被单独控制过（有存储状态）
             const key = getEventKey(ev);
-            const hasManualControl = $gameSystem._followEnabledMap[key] !== undefined;
+            const hasManualControl = followEnabledMap[key] !== undefined;
             
-            // 如果被单独控制过，跳过（单独控制优先级更高）
-            if (hasManualControl) continue;
+            // 如果被单独手动指令控制过，跳过
+            if (hasManualControl && !followEnabledMap['_global_' + key]) continue;
             
             if (globalEnabled) {
-                // 启用跟随
                 const speed = noteData.speed !== null ? noteData.speed : defaultSpeed;
                 const distance = noteData.distance !== null ? noteData.distance : defaultDistance;
                 const teleport = noteData.teleport !== null ? noteData.teleport : true;
@@ -501,55 +535,27 @@
                 ev._followTeleportOnMapChange = teleport;
                 
                 const origKey = 'e' + ev._eventId;
-                if ($gameSystem._followOriginalMapId[origKey] === undefined) {
-                    $gameSystem._followOriginalMapId[origKey] = currentMapId;
+                if (followOriginalMapId[origKey] === undefined) {
+                    followOriginalMapId[origKey] = currentMapId;
                 }
                 
-                // 直接设置事件属性，不通过setFollowEnabled（避免污染单独控制状态）
                 ev._followEnabled = true;
-                // 但需要存储状态，以便地图切换时恢复
-                if (!$gameSystem._followEnabledMap) {
-                    $gameSystem._followEnabledMap = {};
-                }
-                // 使用特殊标记表示这是全局控制的
-                $gameSystem._followEnabledMap[key] = true;
-                // 但标记为"全局控制"，方便后续判断
-                $gameSystem._followEnabledMap['_global_' + key] = true;
+                followEnabledMap[key] = true;
+                followEnabledMap['_global_' + key] = true;
                 
-                // 清除移动禁用和转向禁用状态
-                if ($gameSystem._followMoveDisabledMap) {
-                    delete $gameSystem._followMoveDisabledMap[key];
-                }
-                if ($gameSystem._followTurnWhenMoveDisabledMap) {
-                    delete $gameSystem._followTurnWhenMoveDisabledMap[key];
-                }
-                if ($gameSystem._followTeleportEnabledMap) {
-                    $gameSystem._followTeleportEnabledMap[key] = teleport;
-                }
+                delete followMoveDisabledMap[key];
+                delete followTurnWhenMoveDisabledMap[key];
+                followTeleportEnabledMap[key] = teleport;
             } else {
-                // 禁用跟随
                 ev._followEnabled = false;
-                // 清除所有状态
-                if ($gameSystem._followEnabledMap) {
-                    delete $gameSystem._followEnabledMap[key];
-                    delete $gameSystem._followEnabledMap['_global_' + key];
-                }
-                if ($gameSystem._followMoveDisabledMap) {
-                    delete $gameSystem._followMoveDisabledMap[key];
-                }
-                if ($gameSystem._followTurnWhenMoveDisabledMap) {
-                    delete $gameSystem._followTurnWhenMoveDisabledMap[key];
-                }
-                if ($gameSystem._followTeleportEnabledMap) {
-                    delete $gameSystem._followTeleportEnabledMap[key];
-                }
-                // 速度重置为默认
-                if (ev._followSpeed !== undefined) {
-                    ev._followSpeed = defaultSpeed;
-                }
-                if (ev._followDistance !== undefined) {
-                    ev._followDistance = defaultDistance;
-                }
+                delete followEnabledMap[key];
+                delete followEnabledMap['_global_' + key];
+                delete followMoveDisabledMap[key];
+                delete followTurnWhenMoveDisabledMap[key];
+                delete followTeleportEnabledMap[key];
+                
+                if (ev._followSpeed !== undefined) ev._followSpeed = defaultSpeed;
+                if (ev._followDistance !== undefined) ev._followDistance = defaultDistance;
                 ev._followTeleportOnMapChange = true;
             }
         }
@@ -557,22 +563,19 @@
 
     // ----- 核心函数 -----
     function isFollowEnabled(event) {
-        const map = $gameSystem._followEnabledMap || {};
+        const map = getSystemData('_followEnabledMap');
         return map[getEventKey(event)] === true;
     }
 
     function setFollowEnabled(event, enabled) {
-        if (!$gameSystem._followEnabledMap) {
-            $gameSystem._followEnabledMap = {};
-        }
+        const map = getSystemData('_followEnabledMap');
         const key = getEventKey(event);
         if (enabled) {
-            $gameSystem._followEnabledMap[key] = true;
-            // 清除全局标记，表示这是单独控制
-            delete $gameSystem._followEnabledMap['_global_' + key];
+            map[key] = true;
+            delete map['_global_' + key];
         } else {
-            delete $gameSystem._followEnabledMap[key];
-            delete $gameSystem._followEnabledMap['_global_' + key];
+            delete map[key];
+            delete map['_global_' + key];
         }
         event._followEnabled = enabled;
         if (!enabled) {
@@ -583,57 +586,56 @@
 
     function isFollowMoveDisabled(event) {
         if (!isFollowEnabled(event)) return true;
-        const map = $gameSystem._followMoveDisabledMap || {};
+        const map = getSystemData('_followMoveDisabledMap');
         return map[getEventKey(event)] === true;
     }
 
     function setFollowMoveDisabled(event, disabled) {
-        if (!$gameSystem._followMoveDisabledMap) {
-            $gameSystem._followMoveDisabledMap = {};
-        }
+        const map = getSystemData('_followMoveDisabledMap');
         const key = getEventKey(event);
         if (disabled) {
-            $gameSystem._followMoveDisabledMap[key] = true;
+            map[key] = true;
         } else {
-            delete $gameSystem._followMoveDisabledMap[key];
+            delete map[key];
         }
     }
 
     function isFollowTurnWhenMoveDisabled(event) {
         if (!isFollowEnabled(event)) return false;
-        const map = $gameSystem._followTurnWhenMoveDisabledMap || {};
+        const map = getSystemData('_followTurnWhenMoveDisabledMap');
         const val = map[getEventKey(event)];
         return val !== undefined ? val : true;
     }
 
     function setFollowTurnWhenMoveDisabled(event, enabled) {
-        if (!$gameSystem._followTurnWhenMoveDisabledMap) {
-            $gameSystem._followTurnWhenMoveDisabledMap = {};
-        }
+        const map = getSystemData('_followTurnWhenMoveDisabledMap');
         const key = getEventKey(event);
-        $gameSystem._followTurnWhenMoveDisabledMap[key] = enabled;
+        map[key] = enabled;
     }
 
     function isFollowTeleportEnabled(event) {
-        const map = $gameSystem._followTeleportEnabledMap || {};
+        // 全局传送开关如果开启为 false，则直接返回 false
+        if (!enableMapTeleportParam) return false;
+        
+        const map = getSystemData('_followTeleportEnabledMap');
         const val = map[getEventKey(event)];
         return val !== undefined ? val : true;
     }
 
     function setFollowTeleportEnabled(event, enabled) {
-        if (!$gameSystem._followTeleportEnabledMap) {
-            $gameSystem._followTeleportEnabledMap = {};
-        }
+        const map = getSystemData('_followTeleportEnabledMap');
         const key = getEventKey(event);
-        $gameSystem._followTeleportEnabledMap[key] = enabled;
+        map[key] = enabled;
         event._followTeleportOnMapChange = enabled;
     }
 
     function fullyEnableFollow(event) {
         const currentMapId = $gameMap.mapId();
         const origKey = 'e' + event._eventId;
-        if ($gameSystem._followOriginalMapId[origKey] === undefined) {
-            $gameSystem._followOriginalMapId[origKey] = currentMapId;
+        const followOriginalMapId = getSystemData('_followOriginalMapId');
+        
+        if (followOriginalMapId[origKey] === undefined) {
+            followOriginalMapId[origKey] = currentMapId;
         }
         setFollowEnabled(event, true);
         setFollowMoveDisabled(event, false);
@@ -667,19 +669,11 @@
     }
 
     // ============================================================
-    // 【核心改进】智能获取当前事件ID（支持公共事件）
+    // 智能获取当前事件ID（支持公共事件）
     // ============================================================
     let _currentCommandEventId = 0;
 
-    /**
-     * 递归查找调用栈中的原始事件ID
-     * 遍历所有解释器，找到第一个不是公共事件的调用者
-     */
     function findOriginalEventId() {
-        // 首先检查当前解释器
-        const interpreters = [Graphics._interpreter];
-        
-        // 也检查 Game_Interpreter 的静态列表（如果有）
         if (Game_Interpreter._instances) {
             for (const inst of Game_Interpreter._instances) {
                 if (inst && inst._eventId > 0 && !inst._isCommonEvent) {
@@ -688,19 +682,15 @@
             }
         }
         
-        // 遍历所有可能的解释器
         for (let i = 0; i < 10; i++) {
-            const interpreter = $gameMap._interpreter || 
-                               (window._interpreterStack && window._interpreterStack[i]);
+            const interpreter = $gameMap ? $gameMap._interpreter : null;
             if (interpreter && interpreter._eventId > 0 && !interpreter._isCommonEvent) {
                 return interpreter._eventId;
             }
         }
         
-        // 如果当前解释器是公共事件，尝试从调用者链中查找
-        const currentInterpreter = $gameMap._interpreter || Graphics._interpreter;
+        const currentInterpreter = $gameMap ? $gameMap._interpreter : null;
         if (currentInterpreter && currentInterpreter._eventId === 0) {
-            // 可能是从公共事件调用的，尝试从父级解释器获取
             if (currentInterpreter._parentInterpreter) {
                 let parent = currentInterpreter._parentInterpreter;
                 while (parent) {
@@ -715,25 +705,18 @@
         return 0;
     }
 
-    /**
-     * 获取目标事件 - 支持公共事件中识别当前事件
-     */
     function getTargetEvent(eventIdParam) {
         let eventId = parseInt(eventIdParam, 10);
         
-        // 如果未指定ID或ID为0，尝试智能获取当前事件
         if (isNaN(eventId) || eventId <= 0) {
-            // 优先使用插件指令记录的事件ID
             if (_currentCommandEventId > 0) {
                 eventId = _currentCommandEventId;
             } else {
-                // 尝试从调用栈中查找原始事件
                 eventId = findOriginalEventId();
             }
         }
         
-        // 如果仍然找不到有效ID，返回null
-        if (eventId <= 0) return null;
+        if (eventId <= 0 || !$gameMap) return null;
         
         const event = $gameMap.event(eventId);
         if (!event) return null;
@@ -741,6 +724,8 @@
         if (event._followSpeed === undefined) {
             const currentMapId = $gameMap.mapId();
             const origKey = 'e' + eventId;
+            const followOriginalMapId = getSystemData('_followOriginalMapId');
+            
             event._followSpeed = defaultSpeed;
             event._followDistance = defaultDistance;
             event._followWaiting = false;
@@ -748,19 +733,16 @@
             event._followWaitStartPlayerDist = 0;
             event._followLockedSpeed = null;
             event._followTeleportOnMapChange = true;
-            if ($gameSystem._followOriginalMapId[origKey] === undefined) {
-                $gameSystem._followOriginalMapId[origKey] = currentMapId;
+            if (followOriginalMapId[origKey] === undefined) {
+                followOriginalMapId[origKey] = currentMapId;
             }
         }
         return event;
     }
 
-    // ============================================================
     // 拦截 pluginCommand 保存当前事件ID
-    // ============================================================
     const _pluginCommandBase = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
-        // 保存当前事件ID（可能是0，如果是公共事件的话）
         _currentCommandEventId = this._eventId;
         _pluginCommandBase.call(this, command, args);
         _currentCommandEventId = 0;
@@ -769,31 +751,25 @@
     // ============================================================
     // 注册独立插件指令
     // ============================================================
-    
-    // 1. 全局开启
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowEnableAll", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowEnableAll", args => {
         enableAllFollowByNote();
     });
 
-    // 2. 全局关闭
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowDisableAll", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowDisableAll", args => {
         disableAllFollowByNote();
     });
 
-    // 3. 启用跟随
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowEnable", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowEnable", args => {
         const event = getTargetEvent(args.eventId);
         if (event) fullyEnableFollow(event);
     });
 
-    // 4. 禁用跟随
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowDisable", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowDisable", args => {
         const event = getTargetEvent(args.eventId);
         if (event) fullyDisableFollow(event);
     });
 
-    // 5. 禁用移动
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowDisableMove", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowDisableMove", args => {
         const event = getTargetEvent(args.eventId);
         if (event) {
             setFollowEnabled(event, true);
@@ -802,8 +778,7 @@
         }
     });
 
-    // 6. 恢复移动+转向
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowEnableMove", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowEnableMove", args => {
         const event = getTargetEvent(args.eventId);
         if (event) {
             setFollowEnabled(event, true);
@@ -812,26 +787,22 @@
         }
     });
 
-    // 7. 禁用转向
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowDisableTurn", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowDisableTurn", args => {
         const event = getTargetEvent(args.eventId);
         if (event) setFollowTurnWhenMoveDisabled(event, false);
     });
 
-    // 8. 恢复转向
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowEnableTurn", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowEnableTurn", args => {
         const event = getTargetEvent(args.eventId);
         if (event) setFollowTurnWhenMoveDisabled(event, true);
     });
 
-    // 9. 启用地图传送
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowEnableTele", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowEnableTele", args => {
         const event = getTargetEvent(args.eventId);
         if (event) setFollowTeleportEnabled(event, true);
     });
 
-    // 10. 禁用地图传送
-    PluginManager.registerCommand("Huanaiyka_EventFollow", "EventFollowDisableTele", args => {
+    PluginManager.registerCommand(pluginName, "EventFollowDisableTele", args => {
         const event = getTargetEvent(args.eventId);
         if (event) setFollowTeleportEnabled(event, false);
     });
@@ -854,23 +825,23 @@
     };
 
     // ============================================================
-    // 地图加载时恢复跟随状态（包括全局状态）
+    // 地图加载时恢复跟随状态
     // ============================================================
     const _onMapLoaded = Scene_Map.prototype.onMapLoaded;
     Scene_Map.prototype.onMapLoaded = function() {
         _onMapLoaded.call(this);
         
-        // 每次切换地图时，重新应用全局状态
-        if ($gameSystem._followGlobalEnabled !== undefined) {
+        if ($gameSystem && $gameSystem._followGlobalEnabled !== undefined) {
             applyGlobalFollowState();
         }
         
-        window._followTeleportedThisMap.clear();
-        window._followTeleportDelayCounter = {};
+        resetRuntimeCaches();
 
         const events = $gameMap._events;
+        if (!events) return;
         const player = $gamePlayer;
         const currentMapId = $gameMap.mapId();
+        const followOriginalMapId = getSystemData('_followOriginalMapId');
         
         for (let i = 1; i < events.length; i++) {
             const ev = events[i];
@@ -883,10 +854,11 @@
             ev._followTeleportOnMapChange = teleportEnabled;
             
             const origKey = 'e' + ev._eventId;
-            const originalMapId = $gameSystem._followOriginalMapId[origKey];
+            const originalMapId = followOriginalMapId[origKey];
             const isReturning = (originalMapId === undefined) || (currentMapId === originalMapId);
             
-            if (enabled && teleportEnabled && isReturning) {
+            // 只有开启了地图传送功能（包含全局参数和事件属性），才执行定位
+            if (enableMapTeleportParam && enabled && teleportEnabled && isReturning) {
                 const key = getEventKey(ev);
                 if (!window._followTeleportedThisMap.has(key)) {
                     if (teleportDelayMode === 'immediate') {
@@ -909,9 +881,11 @@
     Scene_Map.prototype.update = function() {
         _updateSceneMap.call(this);
         
-        if (teleportDelayMode === 'delayed') {
+        if (enableMapTeleportParam && teleportDelayMode === 'delayed') {
             const player = $gamePlayer;
-            const events = $gameMap._events;
+            const events = $gameMap ? $gameMap._events : null;
+            if (!events) return;
+
             for (let i = 1; i < events.length; i++) {
                 const ev = events[i];
                 if (!ev) continue;

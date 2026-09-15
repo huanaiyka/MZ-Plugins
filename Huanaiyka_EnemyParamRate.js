@@ -34,23 +34,81 @@
  *   <EnemyAgiRate: x>        // 单独设置 敏捷度 倍率
  *   <EnemyLukRate: x>        // 单独设置 幸运 倍率
  *
- * 倍率可以是小数或整数，例如：0.5、1.2、3 等。
- * 最终属性值采用“四舍五入”。
+ * ============================================================================
+ * 倍率表达式（重点）
+ * ============================================================================
  * 
-============================================================================
- * 覆盖优先级规则（由低到高）
+ * 【基础倍率】
+ *   直接写数字：1.5、2、0.8 等
+ * 
+ * 【变量增强 - 渐进式增长】
+ *   v[变量ID]              → 倍率 = 变量值（直接使用）
+ *   v[变量ID]%             → 倍率 = 变量值 / 100
+ *   v[变量ID]/除数          → 倍率 = 变量值 / 除数
+ *   1+v[变量ID]/除数        → 倍率 = 1 + 变量值/除数  ★推荐★
+ *   1+v[变量ID]%            → 倍率 = 1 + 变量值/100
+ * 
+ * 【示例】
+ *   变量1 = 10，标签写 1+v[1]/100  → 倍率 = 1 + 10/100 = 1.1
+ *   变量1 = 20，标签写 1+v[1]/100  → 倍率 = 1 + 20/100 = 1.2
+ *   变量1 = 50，标签写 1+v[1]/100  → 倍率 = 1 + 50/100 = 1.5
+ *   变量1 = 100，标签写 1+v[1]/100 → 倍率 = 1 + 100/100 = 2.0
+ *
+ *   变量5 = 5，标签写 1+v[5]/20    → 倍率 = 1 + 5/20 = 1.25
+ *   变量5 = 10，标签写 1+v[5]/20   → 倍率 = 1 + 10/20 = 1.5
+ *
+ * ============================================================================
+ * 覆盖优先级（由低到高）
  * ============================================================================
  *  全局标签 < 四属性标签 < 两属性标签 < 单属性标签
- *
- *  例如：
- *  <EnemyCombatRate: 2><EnemyAtkRate: 3>
- *  → 攻/防/魔攻/魔防 变 2 倍，但攻击力（ATK）会被单属性标签覆盖变成 3 倍。
- *
  * ============================================================================
  */
 
 (() => {
     'use strict';
+
+    /**
+     * 解析倍率值，支持完整表达式（如 1+v[1]/100）
+     * @param {string} rawStr - 原始字符串
+     * @returns {number|null} - 解析后的数值，无效时返回 null
+     */
+    function parseRateValue(rawStr) {
+        if (!rawStr || rawStr.trim() === '') return null;
+        
+        const trimmed = rawStr.trim();
+        
+        // 替换所有 v[数字] 为实际的变量值
+        let expression = trimmed.replace(/v\s*\[\s*(\d+)\s*\]/gi, (match, varId) => {
+            const id = parseInt(varId, 10);
+            if (id < 1) return '0';
+            const value = $gameVariables.value(id);
+            return typeof value === 'number' && !isNaN(value) ? value.toString() : '0';
+        });
+        
+        // 处理 % 符号：将 "100%" 转换为 "1"，将 "50%" 转换为 "0.5"
+        // 注意：这里只处理数字后紧跟 % 的情况
+        expression = expression.replace(/(\d+(?:\.\d+)?)\s*%/g, (match, num) => {
+            return (parseFloat(num) / 100).toString();
+        });
+        
+        // 安全计算表达式
+        try {
+            // 只允许数字、运算符、小数点、括号
+            const sanitized = expression.replace(/[^0-9+\-*/().]/g, '');
+            if (!sanitized) return null;
+            
+            // 使用 Function 安全计算
+            const result = Function('"use strict"; return (' + sanitized + ')')();
+            
+            if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                return result > 0 ? result : null;
+            }
+            return null;
+        } catch (e) {
+            console.warn('倍率表达式解析失败:', expression, e);
+            return null;
+        }
+    }
 
     /**
      * 解析敌人的备注标签并返回倍率数组
@@ -60,62 +118,55 @@
     function getParamRates(dataEnemy) {
         if (!dataEnemy) return [1, 1, 1, 1, 1, 1, 1, 1];
         
-        // 读取缓存
-        if (dataEnemy._enemyParamRates) {
-            return dataEnemy._enemyParamRates;
-        }
-
         const rates = [1, 1, 1, 1, 1, 1, 1, 1];
         const note = dataEnemy.note || "";
 
         function extractValue(tagName) {
-            const regex = new RegExp(`<${tagName}:\\s*([+-]?\\d+(?:\\.\\d+)?)>`, 'i');
+            const regex = new RegExp(`<${tagName}:\\s*([^>]+)>`, 'i');
             const match = note.match(regex);
             if (!match) return null;
-            const num = parseFloat(match[1]);
-            return isNaN(num) ? null : num;
+            const raw = match[1].trim();
+            return parseRateValue(raw);
         }
 
-        // 1. 全局倍率 (0~7)
+        // 1. 全局倍率
         const globalRate = extractValue('EnemyRate');
         if (globalRate !== null) {
             rates.fill(globalRate);
         }
 
-        // 2. 攻防四属性组合标签 (2: ATK, 3: DEF, 4: MAT, 5: MDF)
+        // 2. 攻防四属性组合标签
         const combatRate = extractValue('EnemyCombatRate');
         if (combatRate !== null) {
-            rates[2] = combatRate; // ATK
-            rates[3] = combatRate; // DEF
-            rates[4] = combatRate; // MAT
-            rates[5] = combatRate; // MDF
+            rates[2] = combatRate;
+            rates[3] = combatRate;
+            rates[4] = combatRate;
+            rates[5] = combatRate;
         }
 
         // 3. 两属性组合标签
-        // 攻击 + 魔攻 (2: ATK, 4: MAT)
         const powRate = extractValue('EnemyPowRate');
         if (powRate !== null) {
             rates[2] = powRate;
             rates[4] = powRate;
         }
 
-        // 防御 + 魔防 (3: DEF, 5: MDF)
         const guaRate = extractValue('EnemyGuaRate');
         if (guaRate !== null) {
             rates[3] = guaRate;
             rates[5] = guaRate;
         }
 
-        // 4. 单属性标签（优先级最高，覆盖前面的设定）
+        // 4. 单属性标签
         const tags = [
-            'EnemyHPRate',  // 0: MHP
-            'EnemyMPRate',  // 1: MMP
-            'EnemyAtkRate', // 2: ATK
-            'EnemyDefRate', // 3: DEF
-            'EnemyMatRate', // 4: MAT
-            'EnemyMdfRate', // 5: MDF
-            'EnemyAgiRate', // 6: AGI
-            'EnemyLukRate'  // 7: LUK
+            'EnemyHPRate',
+            'EnemyMPRate',
+            'EnemyAtkRate',
+            'EnemyDefRate',
+            'EnemyMatRate',
+            'EnemyMdfRate',
+            'EnemyAgiRate',
+            'EnemyLukRate'
         ];
 
         tags.forEach((tag, paramId) => {
@@ -125,15 +176,13 @@
             }
         });
 
-        // 5. 有效性检查与兜底（非数字或小于等于0时重置为1）
+        // 5. 有效性检查
         for (let i = 0; i < rates.length; i++) {
             if (typeof rates[i] !== 'number' || isNaN(rates[i]) || rates[i] <= 0) {
                 rates[i] = 1;
             }
         }
 
-        // 写入缓存
-        dataEnemy._enemyParamRates = rates;
         return rates;
     }
 
@@ -158,4 +207,5 @@
             return originalBase;
         }
     };
+
 })();
