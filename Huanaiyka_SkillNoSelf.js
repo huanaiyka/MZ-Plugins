@@ -1,36 +1,56 @@
 /*:
- * @plugindesc 敌人技能目标修正：防止选中自身 (强化版)
- * @author Gemini
- * @help 在技能的备注栏中填写 <SkillNoSelf>
- * 当敌人使用目标为“我方单体”的技能时，会自动把自身从目标池中剔除。
+ * @target MZ
+ * @plugindesc 友方/无差别技能在原有范围基础上，排除使用者自身。
+ * @author 幻爱
+ * @url https://github.com/huanaiyka/MZ-Plugins
+ *
+ * @help
+ * 【功能简介】
+ * 让【友方类技能】以及【敌人&我方】的技能，
+ * 在原有目标范围基础上自动排除“使用者自身”。
+ *
+ * 【使用方法】
+ * 1. 数据库 → 技能 → 备注栏写入：
+ *      <SkillNoSelfFriend>
+ * 2. 保存测试，使用者不再出现在目标列表中。
+ * 
+ * 【注意】
+ * 范围为“使用者”的技能不受影响。
+ * ============================================================================
  */
 
-(function() {
-    // 拦截 Game_Action 的 targetsForFriends 方法（该方法用于获取所有友方候选目标）
-    const _Game_Action_targetsForFriends = Game_Action.prototype.targetsForFriends;
-    Game_Action.prototype.targetsForFriends = function() {
-        // 首先获取默认的友方目标列表
-        let targets = _Game_Action_targetsForFriends.call(this);
+(() => {
+    "use strict";
+
+    const PLUGIN_NAME = 'Huanaiyka_SkillNoSelf';
+    const META_KEY = 'SkillNoSelfFriend';
+
+    const hasFriendNoSelfTag = function(skill) {
+        if (!skill || !skill.meta) return false;
+        return skill.meta[META_KEY] === true;
+    };
+
+    const _Game_Action_makeTargets = Game_Action.prototype.makeTargets;
+    Game_Action.prototype.makeTargets = function() {
+        const targets = _Game_Action_makeTargets.call(this);
+        const item = this.item();
+        if (!item || !hasFriendNoSelfTag(item)) return targets;
+
+        const user = this.subject();
+        if (!user) return targets;
         
-        // 检查是否是技能、是否是单体友方目标
-        if (this.isSkill() && this.isForFriend() && !this.isForAll()) {
-            const skill = this.item();
-            // 检查备注栏中是否存在 <SkillNoSelf> 标签
-            if (skill && skill.meta.SkillNoSelf) {
-                const subject = this.subject();
-                // 如果行动发起者是敌人，且备选目标里包含它自己
-                if (subject.isEnemy() && targets.includes(subject)) {
-                    // 从候选目标中过滤掉自己
-                    const filteredTargets = targets.filter(target => target !== subject);
-                    
-                    // 兜底逻辑：如果过滤后还有其他队友，则使用过滤后的列表；
-                    // 如果过滤后没有其他人了（只剩自己），则保留自己，防止游戏报错卡死。
-                    if (filteredTargets.length > 0) {
-                        return filteredTargets;
-                    }
-                }
-            }
+        // 如果范围是“使用者”本人，则跳过（1是使用者，11也是使用者相关）
+        if (this.isForUser()) return targets;
+
+        // 判断是否是“敌人&我方”无差别范围 (Scope = 7)
+        const isAllExceptUserScope = item.scope === 7;
+
+        // 如果是友方技能，或者是无差别攻击(Scope 7)，则执行排除自己的逻辑
+        if (this.isForFriend() || isAllExceptUserScope) {
+            return targets.filter(target => target !== user);
         }
+
+        // 其他情况（如纯打敌方全体）不处理
         return targets;
     };
 })();

@@ -91,55 +91,9 @@
  *    支持 <detail:文本>、<presetDetail:ID>、<detailButton开关号:文本> 标签。
  * 2. 防具信息转义码：通过变量存储防具ID，在任意文本中使用 \armor_name、\skill_entryN 等动态显示信息。
  * 3. 详情按钮：在装备场景右下角显示一个「详」按钮，点击效果与 Shift 键相同。
- *    可通过插件参数「显示详情按钮」关闭。
- * 4. 返回键优化：打开详情后，点击返回/取消键优先关闭详情窗口，而不是退出装备场景。
- * 
- * 本插件需要以下基础插件才能正常运行装备详情窗口功能：
- * - DarkPlasma_CustomKeyHandler version:1.3.0
- * - DarkPlasma_DisplayDatabaseDetailWindow version:1.0.0
+ * 4. 文本超出自动翻页：当详情文本超出窗口高度时，会自动在右上角与右下角显示
+ *    “▲” 与 “▼” 按钮，点击即可向上/下滑动文本。
  * ============================================================================
- * 功能1：装备场景中的详细说明窗口
- * ============================================================================
- * 在装备场景中，将光标对准装备并按下特定按键时，会打开装备详细说明窗口。
- * 窗口背景为半透明，打开详情时光标自动锁定。
- *
- * 【标签说明】
- * 1. 普通详细说明：<detail:文本内容>
- * 2. 预设详细说明：<presetDetail:ID> 或 <presetDetail:ID:开关号>
- *    支持开关控制，从后往前匹配第一个开关满足条件的预设。
- * 3. 开关控制详细说明：<detailButtonX:文本内容>（X为开关编号）
- *    从后往前匹配第一个开关为ON的标签。
- *
- * 优先级：预设 > 开关控制 > 普通详细说明
- *
- * 【无说明时的行为】
- * 如果没有任何有效说明，按下按键无反应，不显示窗口，不播放音效。
- *
- * 【自动换行】
- * 开启后，窗口内的文字会根据窗口宽度自动折行，完美支持颜色、图标等控制码。
- * ============================================================================
- * 功能2：防具信息转义码（基于变量存储防具ID）
- * ============================================================================
- * 通过指定的游戏变量（默认变量 ID 1）储存一件防具的 ID，
- * 在文本事件中使用以下转义码（不区分大小写），即可动态显示该防具的相关信息：
- *
- * 【原有转义码】
- * \added_skillN          - 第 N 个追加技能的名称（若技能不存在则显示“无”）
- * \added_skillN_desc     - 第 N 个追加技能的描述（若技能不存在则为空）
- * \armor_name            - 当前防具的名称（无装备时显示“无”）
- * \armor_type            - 装备类型名称（如“头盔”、“铠甲”）
- * \armor_atype           - 防具类型名称（数据库设定，如“轻甲”、“重甲”）
- *
- * 【新增转义码】（自动隐藏不存在的技能）
- * \skill_entryN          - 显示第 N 个有效技能（完全忽略无效/缺失的技能），
- *                          按照参数“技能条目格式”输出格式化文本。
- *                          若第 N 个有效技能不存在，则整个条目显示为空字符串。
- *
- * 【开关技能支持】
- * 在防具备注中写入：<switchSkill: 开关ID, 关闭时技能ID, 开启时技能ID>
- * 会根据游戏开关状态自动选择对应的技能显示。
- *
- * 注意：所有转义码均不区分大小写，且自动去除技能名称/描述的首尾空格。
  */
 
 /*~struct~PresetDetail:
@@ -392,7 +346,7 @@
   };
 
   // ==========================================================================
-  // 装备详情窗口与自动换行
+  // 装备详情窗口与自动换行/滚动控件
   // ==========================================================================
   if (!Window_DetailText) {
     throw new Error("[Huanaiyka_EquipDetail] 缺少基类 Window_DetailText。");
@@ -499,28 +453,125 @@
     return lines.join('\n');
   }
 
+  // ---- 扩展 Window_DetailText 上下滑动支持 ----
+  const _Window_DetailText_initialize = Window_DetailText.prototype.initialize;
+  Window_DetailText.prototype.initialize = function(rect) {
+    _Window_DetailText_initialize.call(this, rect);
+    this._scrollY = 0;
+    this._totalTextHeight = 0;
+    this.createScrollButtons();
+  };
+
+  Window_DetailText.prototype.createScrollButtons = function() {
+    const btnSize = 28;
+    this._upButton = new Sprite(new Bitmap(btnSize, btnSize));
+    this._upButton.bitmap.fillRect(0, 0, btnSize, btnSize, 'rgba(0,0,0,0.6)');
+    this._upButton.bitmap.strokeRect(0, 0, btnSize, btnSize, '#ffffff');
+    this._upButton.bitmap.fontSize = 16;
+    this._upButton.bitmap.drawText('▲', 0, 0, btnSize, btnSize, 'center');
+
+    this._downButton = new Sprite(new Bitmap(btnSize, btnSize));
+    this._downButton.bitmap.fillRect(0, 0, btnSize, btnSize, 'rgba(0,0,0,0.6)');
+    this._downButton.bitmap.strokeRect(0, 0, btnSize, btnSize, '#ffffff');
+    this._downButton.bitmap.fontSize = 16;
+    this._downButton.bitmap.drawText('▼', 0, 0, btnSize, btnSize, 'center');
+
+    this._upButton.visible = false;
+    this._downButton.visible = false;
+
+    this.addChild(this._upButton);
+    this.addChild(this._downButton);
+  };
+
+  Window_DetailText.prototype.updateScrollButtonsPosition = function() {
+    const btnSize = 28;
+    const padding = 6;
+    this._upButton.x = this.width - btnSize - padding;
+    this._upButton.y = padding;
+    this._downButton.x = this.width - btnSize - padding;
+    this._downButton.y = this.height - btnSize - padding;
+  };
+
   const _Window_DetailText_refresh = Window_DetailText.prototype.refresh;
   Window_DetailText.prototype.refresh = function() {
-    this.contents.clear();
-    if (!this._text) return;
+    if (!this._text) {
+      this.contents.clear();
+      this._totalTextHeight = 0;
+      this._scrollY = 0;
+      this.updateScrollButtons();
+      return;
+    }
     this.resetFontSettings();
 
-    let width = this.contents.width;
-    if (width <= 0 && this.innerWidth) {
-      width = this.innerWidth - this.standardPadding() * 2;
-    }
+    let width = this.innerWidth;
     if (width <= 0) width = 400;
 
+    let processedText = this._text;
     if (autoWordWrap && width > 0) {
-      const wrappedText = forceWordWrap(this._text, width, this);
-      this.drawTextEx(wrappedText, 0, 0, width);
+      processedText = forceWordWrap(this._text, width, this);
+    }
+
+    const textState = this.createTextState(processedText, 0, 0, width);
+    const lines = processedText.split('\n');
+    const lineHeight = this.lineHeight();
+    this._totalTextHeight = lines.length * lineHeight;
+
+    const maxScroll = Math.max(0, this._totalTextHeight - this.innerHeight);
+    this._scrollY = Math.max(0, Math.min(this._scrollY, maxScroll));
+
+    // 创建适应所有内容的内部位图
+    const targetHeight = Math.max(this.innerHeight, this._totalTextHeight);
+    if (this.contents.height < targetHeight) {
+      this.contents = new Bitmap(width, targetHeight);
     } else {
-      this.drawText(this._text, 0, 0, width, 'left');
+      this.contents.clear();
+    }
+
+    this.drawTextEx(processedText, 0, 0, width);
+    this.origin.y = this._scrollY;
+
+    this.updateScrollButtonsPosition();
+    this.updateScrollButtons();
+  };
+
+  Window_DetailText.prototype.updateScrollButtons = function() {
+    if (!this.visible) {
+      if (this._upButton) this._upButton.visible = false;
+      if (this._downButton) this._downButton.visible = false;
+      return;
+    }
+    const maxScroll = Math.max(0, this._totalTextHeight - this.innerHeight);
+    if (maxScroll > 0) {
+      this._upButton.visible = this._scrollY > 0;
+      this._downButton.visible = this._scrollY < maxScroll;
+    } else {
+      this._upButton.visible = false;
+      this._downButton.visible = false;
+    }
+  };
+
+  Window_DetailText.prototype.scrollUp = function() {
+    if (this._scrollY > 0) {
+      this._scrollY = Math.max(0, this._scrollY - this.lineHeight() * 2);
+      this.origin.y = this._scrollY;
+      SoundManager.playCursor();
+      this.updateScrollButtons();
+    }
+  };
+
+  Window_DetailText.prototype.scrollDown = function() {
+    const maxScroll = Math.max(0, this._totalTextHeight - this.innerHeight);
+    if (this._scrollY < maxScroll) {
+      this._scrollY = Math.min(maxScroll, this._scrollY + this.lineHeight() * 2);
+      this.origin.y = this._scrollY;
+      SoundManager.playCursor();
+      this.updateScrollButtons();
     }
   };
 
   const _Window_DetailText_setText = Window_DetailText.prototype.setText;
   Window_DetailText.prototype.setText = function(text) {
+    this._scrollY = 0;
     if (text && typeof text === 'string') {
       text = this.convertEscapeCharacters(text);
     }
@@ -533,6 +584,38 @@
     const customText = getEnhancedEquipDetail(item);
     if (customText) return customText;
     return _Window_DetailText_detailText.call(this, item);
+  };
+
+  // 处理对滑动按钮的点击
+  Window_DetailText.prototype.processTouchScroll = function() {
+    if (!this.visible || !TouchInput.isTriggered()) return false;
+    const touchX = TouchInput.x - this.x;
+    const touchY = TouchInput.y - this.y;
+
+    if (this._upButton && this._upButton.visible) {
+      const bx = this._upButton.x;
+      const by = this._upButton.y;
+      const bw = this._upButton.width;
+      const bh = this._upButton.height;
+      if (touchX >= bx && touchX <= bx + bw && touchY >= by && touchY <= by + bh) {
+        this.scrollUp();
+        TouchInput.clear();
+        return true;
+      }
+    }
+
+    if (this._downButton && this._downButton.visible) {
+      const bx = this._downButton.x;
+      const by = this._downButton.y;
+      const bw = this._downButton.width;
+      const bh = this._downButton.height;
+      if (touchX >= bx && touchX <= bx + bw && touchY >= by && touchY <= by + bh) {
+        this.scrollDown();
+        TouchInput.clear();
+        return true;
+      }
+    }
+    return false;
   };
 
   const _Scene_Equip_create = Scene_Equip.prototype.create;
@@ -561,30 +644,27 @@
     }
   };
 
-// 专一隐藏/恢复左右角色切换按钮（保留取消返回按钮）
-Scene_Equip.prototype.setPageButtonsVisible = function(visible) {
-  if (this._pageupButton) this._pageupButton.visible = visible;
-  if (this._pagedownButton) this._pagedownButton.visible = visible;
-};
+  Scene_Equip.prototype.setPageButtonsVisible = function(visible) {
+    if (this._pageupButton) this._pageupButton.visible = visible;
+    if (this._pagedownButton) this._pagedownButton.visible = visible;
+  };
 
-// 屏蔽详情展示期间的角色切换
-const _Scene_Equip_needsPageButtons = Scene_Equip.prototype.needsPageButtons;
-Scene_Equip.prototype.needsPageButtons = function() {
-  if (this._detailWindow && this._detailWindow.visible) {
-    return false;
-  }
-  return _Scene_Equip_needsPageButtons ? _Scene_Equip_needsPageButtons.call(this) : true;
-};
+  const _Scene_Equip_needsPageButtons = Scene_Equip.prototype.needsPageButtons;
+  Scene_Equip.prototype.needsPageButtons = function() {
+    if (this._detailWindow && this._detailWindow.visible) {
+      return false;
+    }
+    return _Scene_Equip_needsPageButtons ? _Scene_Equip_needsPageButtons.call(this) : true;
+  };
 
-// 关键：接管 updatePageButtons，详情打开时强制隐藏翻页按钮
-const _Scene_Equip_updatePageButtons = Scene_Equip.prototype.updatePageButtons;
-Scene_Equip.prototype.updatePageButtons = function() {
-  _Scene_Equip_updatePageButtons.call(this);
-  if (this._detailWindow && this._detailWindow.visible) {
-    if (this._pageupButton) this._pageupButton.visible = false;
-    if (this._pagedownButton) this._pagedownButton.visible = false;
-  }
-};
+  const _Scene_Equip_updatePageButtons = Scene_Equip.prototype.updatePageButtons;
+  Scene_Equip.prototype.updatePageButtons = function() {
+    _Scene_Equip_updatePageButtons.call(this);
+    if (this._detailWindow && this._detailWindow.visible) {
+      if (this._pageupButton) this._pageupButton.visible = false;
+      if (this._pagedownButton) this._pagedownButton.visible = false;
+    }
+  };
 
   const _Scene_Equip_onActorChange = Scene_Equip.prototype.onActorChange;
   Scene_Equip.prototype.onActorChange = function() {
@@ -594,7 +674,6 @@ Scene_Equip.prototype.updatePageButtons = function() {
     _Scene_Equip_onActorChange.call(this);
   };
 
-  // 打开/切换 详情窗口
   Scene_Equip.prototype.toggleDetailWindow = function(activeWindow) {
     if (!this._detailWindow) return;
     if (this._detailWindow.visible) {
@@ -608,12 +687,16 @@ Scene_Equip.prototype.updatePageButtons = function() {
         this._detailWindow.setItem(currentItem);
         if (this._detailWindow._text && this._detailWindow._text.length > 0) {
           this._detailWindow.show();
-          
+          this._detailWindow.updateScrollButtons();
+
           this._previousActiveWindow = activeWindow || (this._slotWindow.active ? this._slotWindow : this._itemWindow);
+          if (this._previousActiveWindow) {
+            this._savedWindowIndex = this._previousActiveWindow.index();
+          }
+
           if (this._slotWindow) this._slotWindow.deactivate();
           if (this._itemWindow) this._itemWindow.deactivate();
 
-          // 仅隐藏左右角色切换按键，保留右上角Cancel返回按键
           this.setPageButtonsVisible(false);
 
           if (this._detailButton) {
@@ -624,26 +707,28 @@ Scene_Equip.prototype.updatePageButtons = function() {
     }
   };
 
-  // 关闭详情并恢复窗口和UI
   Scene_Equip.prototype.closeDetailWindow = function() {
     if (this._detailWindow && this._detailWindow.visible) {
       this._detailWindow.hide();
+      this._detailWindow.updateScrollButtons();
       SoundManager.playCancel();
       
       if (this._detailButton) {
         this._detailButton.setDetailOpen(false);
       }
 
-      // 恢复左右角色切换按钮
       this.setPageButtonsVisible(true);
 
-      // 恢复原列表窗口控制
       if (this._previousActiveWindow) {
+        if (this._savedWindowIndex !== undefined && this._savedWindowIndex >= 0) {
+          this._previousActiveWindow.select(this._savedWindowIndex);
+        }
         this._previousActiveWindow.activate();
       } else {
         if (this._slotWindow) this._slotWindow.activate();
       }
       this._previousActiveWindow = null;
+      this._savedWindowIndex = -1;
     }
   };
 
@@ -808,17 +893,39 @@ Scene_Equip.prototype.updatePageButtons = function() {
 
   const _Scene_Equip_update_withButton = Scene_Equip.prototype.update;
   Scene_Equip.prototype.update = function() {
-    // 详情打开时，拦截鼠标右键、键盘取消键以及设定的详情按键（Shift）
     if (this._detailWindow && this._detailWindow.visible) {
+      // 优先响应详情窗口内部滑动按钮的点击
+      if (this._detailWindow.processTouchScroll()) {
+        return;
+      }
+
+      // 按键响应：也可使用方向键上下滑动详情文本
+      if (Input.isRepeated('up')) {
+        this._detailWindow.scrollUp();
+      } else if (Input.isRepeated('down')) {
+        this._detailWindow.scrollDown();
+      }
+
       const isRightClick = TouchInput.isCancelled();
       const isCancelKey = Input.isTriggered('cancel') || Input.isTriggered('escape');
       const isDetailKey = Input.isTriggered(openDetailKey);
 
+      // 1. 触发取消键、右键或按下详情快捷键时，直接关闭详情窗口
       if (isRightClick || isCancelKey || isDetailKey) {
         Input.clear();
         TouchInput.clear();
         this.closeDetailWindow();
         return;
+      }
+
+      // 2. 拦截任意位置的点击（除了右下角的详情按钮和滑动按钮），避免引起后台列表焦点变动
+      if (TouchInput.isTriggered()) {
+        const btn = this._detailButton;
+        const hitButton = btn && btn.isHit(TouchInput.x, TouchInput.y);
+        if (!hitButton) {
+          TouchInput.clear();
+          return;
+        }
       }
     }
 

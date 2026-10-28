@@ -57,6 +57,9 @@
         const battler = this._battler;
         if (!battler || !battler.isEnemy()) return;
 
+    // 加上这一行：敌人逃跑或隐藏时，不干预透明度
+    if (battler.isHidden()) return; 
+
         // 死亡时不干预透明度，让默认死亡动画正常播放
         if (battler.isDead()) {
             return;

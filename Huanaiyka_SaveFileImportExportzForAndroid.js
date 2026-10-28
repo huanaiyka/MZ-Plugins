@@ -7,20 +7,46 @@
 @target MZ
 @plugindesc 存档数据文件导入/导出功能，适用于电脑与安卓存档互通
 @author 幻愛
-* @url https://github.com/huanaiyka/MZ-Plugins
+@url https://github.com/huanaiyka/MZ-Plugins
 @license MIT
 
 @help
-修改版：使用 HTML5 原生 <dialog> 弹窗，导入改为文件选择方式，导出数据经 LZString 离线压缩。
-UI 已重新设计，配色统一、按钮顺序符合移动端操作习惯。
 
-- 导入：通过 <input type="file"> 选择 txt 存档文件，使用 FileReader 读取内容。
-- 导出：显示压缩后的存档代码，支持一键复制与保存为 txt 文件。
-- 内置 LZString 压缩算法，无需联网即可缩减导出数据体积（约 60%-80%）。
-- 修复安卓移动端下弹窗尺寸塌陷、只显示一小块或被遮挡的问题。
-- 包含鼠标/触控防穿透保护锁。
-- 固定导入/导出到 1 号存档位（与界面文案一致）。
-- 导入成功后自动刷新存档列表 UI。
+【功能说明】
+本插件在「设置」菜单中增加「导出存档」「导入存档」两个选项，
+用于将 1 号存档位的数据导出为文本/文件，或从文本/文件导入覆盖 1 号存档位。
+适用于电脑与安卓（或其他平台）之间转移存档，无需联网。
+
+导出数据默认使用内置 LZString 压缩并以 Base64 编码，体积小、纯离线。
+导入时会自动识别压缩/非压缩格式（压缩失败时回退普通 Base64 解码）。
+
+【使用步骤】
+1. 在「设置」菜单点击「导出存档」。
+2. 点击「一键复制」复制文本，或点击「保存为文件」下载 .txt 文件。
+3. 在目标设备上打开「设置」→「导入存档」。
+4. 粘贴文本，或点击「选择存档文件」选择之前导出的 .txt。
+5. 点击「确定导入」覆盖 1 号存档位。
+
+【参数说明】
+- 导入选项文字 / 导出选项文字：菜单中显示的文字。
+- 导出说明文本 / 导入说明文本：弹窗顶部的说明文字。
+- 启用压缩：是否对导出/导入数据压缩。开启后体积更小，完全离线。
+- 导出文件名：导出文件的基础名，实际文件名附加时间戳，
+  例如「存档_1699999999999.txt」。
+- 新增选项位置：控制「导出/导入」两项在设置列表中的位置：
+  · 最前面（top）    —— 放在列表最前面（默认）
+  · 最后面（bottom） —— 放在列表最后面
+  · 自定义索引（custom）—— 放在自定义索引处，由「自定义索引」决定
+- 自定义索引：仅当「新增选项位置」为 custom 时生效。
+  0 表示最前，数字越大越靠后；超出范围会自动夹到合法区间。
+  注意：导出项与导入项会一起插入到该位置，导出在前、导入在后。
+
+【注意事项】
+- 本插件固定操作 1 号存档位，请勿与其它修改存档位的插件混用。
+- 导入会覆盖 1 号存档位，操作前建议先备份。
+- 安卓端选择文件时，若从云盘/网盘直接选取可能读取失败，
+  请先将文件移动到本地存储（如「下载」目录）再选择。
+- 弹窗为 DOM 元素，会阻止事件穿透，关闭后有 300ms 冷却防止误触。
 
 @param importButtonText
 @text 导入选项文字
@@ -53,6 +79,25 @@ UI 已重新设计，配色统一、按钮顺序符合移动端操作习惯。
 @type string
 @default 存档
 @desc 导出文件的基础名称，实际文件名会附加时间戳，例如：存档_1699999999999.txt
+
+@param commandPosition
+@text 选项位置
+@type select
+@option top
+@text 最前面
+@option bottom
+@text 最后面
+@option custom
+@text 自定义位置
+@default top
+@desc 控制「导出/导入」两项在设置菜单中的位置。
+
+@param commandIndex
+@text 自定义位置索引
+@type number
+@min 0
+@default 0
+@desc 仅当上方选择了「自定义位置」时生效。0 表示最前，数字越大越靠后。
 */
 
 (() => {
@@ -74,6 +119,8 @@ UI 已重新设计，配色统一、按钮顺序符合移动端操作习惯。
     exportButtonText: String(pluginParameters.exportButtonText || '导出存档'),
     compressionEnabled: String(pluginParameters.compressionEnabled || 'true') === 'true',
     exportFileName: String(pluginParameters.exportFileName || '存档'),
+    commandPosition: String(pluginParameters.commandPosition || 'top'),
+    commandIndex: Number(pluginParameters.commandIndex || 0),
   };
 
   // ========== 内置 LZString 压缩库（离线，无需网络） ==========
@@ -1025,9 +1072,30 @@ UI 已重新设计，配色统一、按钮顺序符合移动端操作习惯。
   // ========== 扩展 Window_Options ==========
   const _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
   Window_Options.prototype.makeCommandList = function () {
-    this.addCommand(settings.exportButtonText, 'exportSave', true);
-    this.addCommand(settings.importButtonText, 'importSave', true);
+    // 先生成原有选项列表
     _Window_Options_makeCommandList.call(this);
+
+    // 再按配置位置插入「导出/导入」两项（导出在前、导入在后）
+    const exportCmd = { name: settings.exportButtonText, symbol: 'exportSave', enabled: true, ext: null };
+    const importCmd = { name: settings.importButtonText, symbol: 'importSave', enabled: true, ext: null };
+    const cmds = [exportCmd, importCmd];
+
+    let pos;
+    switch (settings.commandPosition) {
+      case 'bottom':
+        pos = this._list.length;
+        break;
+      case 'custom':
+        pos = settings.commandIndex;
+        break;
+      case 'top':
+      default:
+        pos = 0;
+        break;
+    }
+    // 夹到合法区间，避免越界
+    pos = Math.max(0, Math.min(pos, this._list.length));
+    this._list.splice(pos, 0, ...cmds);
   };
 
   const _Window_Options_drawItem = Window_Options.prototype.drawItem;

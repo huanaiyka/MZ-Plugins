@@ -11,13 +11,13 @@
  * 2. 可限制仅对特定移动类型的事件生效（随机/接近/远离/固定/自定义）。
  * 3. 可调整连续推动的速度（两次推动间隔帧数）。
  * 4. 独立功能：事件备注 <箱子> 后，点击即可推动（自动推箱子）。
- *
+ * 
  * ============================================================================
  * 事件备注标签
  * ============================================================================
  * 1. <箱子>               → 点击事件时推动（推箱子）
  * 2. <被推:公共事件ID>    → 被推动后执行指定的公共事件
- *
+ * 
  * ============================================================================
  * 插件指令
  * ============================================================================
@@ -25,7 +25,7 @@
  * ◆ GetPushedEventX 变量      → 将被推事件的X坐标存入指定变量
  * ◆ GetPushedEventY 变量      → 将被推事件的Y坐标存入指定变量
  * ◆ GetPushedDirection 变量   → 将推动方向(2/4/6/8)存入指定变量
- *
+ * 
  * @param enablePushNPC
  * @text 启用推动NPC
  * @type boolean
@@ -33,28 +33,28 @@
  * @off 禁用
  * @desc 是否允许长按方向键推动NPC（推箱子功能不受此影响）。
  * @default true
- *
+ * 
  * @param enableRandomMove
  * @text 允许推动【随机移动】事件
  * @type boolean
  * @on 允许
  * @off 禁止
  * @default true
- *
+ * 
  * @param enableApproachMove
  * @text 允许推动【接近移动】事件
  * @type boolean
  * @on 允许
  * @off 禁止
  * @default true
- *
+ * 
  * @param enableAwayMove
  * @text 允许推动【远离移动】事件
  * @type boolean
  * @on 允许
  * @off 禁止
  * @default true
- *
+ * 
  * @param enableFixedMove
  * @text 允许推动【固定移动】事件
  * @type boolean
@@ -62,7 +62,7 @@
  * @off 禁止
  * @desc 允许推动移动类型为“固定”的事件
  * @default false
- *
+ * 
  * @param enableCustomMove
  * @text 允许推动【自定义移动】事件
  * @type boolean
@@ -70,19 +70,19 @@
  * @off 禁止
  * @desc 允许推动移动类型为“自定义”的事件
  * @default false
- *
+ * 
  * @param longPressFrames
  * @text 长按判定帧数
  * @type number
  * @desc 方向键需持续按下的帧数（60帧≈1秒）。
  * @default 60
- *
+ * 
  * @param pushCooldownFrames
  * @text 连续推动间隔帧数
  * @type number
  * @desc 每次成功推动后需等待的帧数。建议 ≥6。
  * @default 15
- *
+ * 
  * @command GetPushedEventId
  * @text 获取被推事件ID
  * @desc 将最后被推事件的ID存入指定变量
@@ -90,7 +90,7 @@
  * @text 存储变量
  * @type variable
  * @default 1
- *
+ * 
  * @command GetPushedEventX
  * @text 获取被推事件X坐标
  * @desc 将最后被推事件的X坐标存入指定变量
@@ -98,7 +98,7 @@
  * @text 存储变量
  * @type variable
  * @default 1
- *
+ * 
  * @command GetPushedEventY
  * @text 获取被推事件Y坐标
  * @desc 将最后被推事件的Y坐标存入指定变量
@@ -106,7 +106,7 @@
  * @text 存储变量
  * @type variable
  * @default 1
- *
+ * 
  * @command GetPushedDirection
  * @text 获取推动方向
  * @desc 将最后推动的方向值(2/4/6/8)存入指定变量
@@ -191,8 +191,9 @@ Huanaiyka.EveryEventIsMove.pushBox = function(event) {
     Huanaiyka.EveryEventIsMove._lastPushed.direction = playerDir;
 
     // 检测 <被推:数字>
-    if (event.event() && event.event().note) {
-        const match = event.event().note.match(/<被推:(\d+)>/);
+    const eventData = event.event();
+    if (eventData && eventData.note) {
+        const match = eventData.note.match(/<被推:(\d+)>/);
         if (match) {
             const commonEventId = parseInt(match[1], 10);
             if (commonEventId > 0) $gameTemp.reserveCommonEvent(commonEventId);
@@ -274,7 +275,8 @@ const _Game_Map_update = Game_Map.prototype.update;
 Game_Map.prototype.update = function(sceneActive) {
     _Game_Map_update.call(this, sceneActive);
     
-    if (sceneActive) {
+    // 【修复点】：增加 !SceneManager.isSceneChanging() 防止菜单开关瞬间报错
+    if (sceneActive && !SceneManager.isSceneChanging()) {
         this.updatePushCooldown();
         if (Huanaiyka.EveryEventIsMove.enablePushNPC) {
             if (this._pushCooldown === 0) {
@@ -296,7 +298,9 @@ Game_Map.prototype.update = function(sceneActive) {
 const _Game_Event_start = Game_Event.prototype.start;
 Game_Event.prototype.start = function() {
     _Game_Event_start.call(this);
-    if (this.event() && this.event().note && this.event().note.includes('<箱子>')) {
+    // 【修复点】：提取缓存，避免重复读取
+    const eventData = this.event();
+    if (eventData && eventData.note && eventData.note.includes('<箱子>')) {
         Huanaiyka.EveryEventIsMove.pushBox(this);
     }
 };

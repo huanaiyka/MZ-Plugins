@@ -6,7 +6,7 @@
  *
  * @command LogLongCode
  * @text 输出文字
- * @desc 在开发者控制台按行输出文本。
+ * @desc 在开发者控制台整块输出文本。
  *
  * @arg content
  * @text 文字内容
@@ -46,7 +46,7 @@
 
         // 如果内容为空，给出提示
         if (!content || content.trim() === '') {
-            console.log('(空内容)');
+            queueMicrotask(console.log.bind(console, '(空内容)'));
             return;
         }
 
@@ -57,11 +57,11 @@
             // 如果不是 JSON 格式，直接按原文本处理
         }
 
-        // 按换行符分割并输出每一行
-        const lines = content.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-            console.log(lines[i]);
-        }
+        // 确保 content 转换为了字符串，防止非字符串类型报错
+        const textContent = String(content || '');
+
+        // 整体作为一个文本块输出（通过微任务去除右侧文件名行号）
+        queueMicrotask(console.log.bind(console, textContent));
     });
 
 })();

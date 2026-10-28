@@ -10,6 +10,10 @@
  * 从指定池子中无放回随机抽取一个元素（数字或文字均可），
  * 抽完可按设定自动重置或返回 0。多池独立状态，可存盘。
  *
+ * 池子写法：英文逗号分隔，例如 "10,20,30" 或 "药水,铁剑,金币"。
+ *
+ * 注意："1~10" 与 "1,2,3,4,5,6,7,8,9,10" 解析后内容相同，会共用同一个池。
+ *
  * ============================================================
  * 插件命令
  * ============================================================
@@ -30,9 +34,9 @@
  * ============================================================
  * @param saveState
  * @text 保存抽取状态
- * @desc 开启后抽取进度保存到存档，读档后可继续
+ * @desc 开启后抽取进度保存到存档，读档后可继续。默认开启；关闭后读档会重置抽取进度。
  * @type boolean
- * @default false
+ * @default true
  *
  * @param defaultPool
  * @text 默认池子
@@ -278,7 +282,7 @@ function parsePoolString(str) {
         const _Game_System_initialize = Game_System.prototype.initialize;
         Game_System.prototype.initialize = function() {
             _Game_System_initialize.call(this);
-            this._uniqueDrawPools = {};
+            if (!this._uniqueDrawPools) this._uniqueDrawPools = {};
         };
     }
 })();

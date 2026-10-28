@@ -1,11 +1,10 @@
 /*:
  * @target MZ
- * @plugindesc [v1.6] 菜单列表点击空白处交互增强（物品/技能/装备界面）
- * @author 幻爱 & AI
+ * @plugindesc 菜单列表点击空白处交互增强
+ * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * 
  * @help
- * Huanaiyka_MenuListClickBlank.js
  * ============================================================================
  * ■ 插件功能说明
  * ============================================================================
@@ -23,9 +22,8 @@
  * 
  * 3. 装备界面 (Scene_Equip)：
  *    - 在“装备 / 最强装备 / 全部脱下”指令处，当光标停留在“装备”选项时，
- *      点击界面内任意非指令按钮区域（如装备槽列表或空白处），均可直接解除锁定，
- *      自动进入装备槽选择界面。
- *    - 直接点击装备槽列表的空白处，同样可激活装备槽窗口并进入选择。
+ *      点击界面内任意区域（除返回按钮/切换角色按钮外），均可解除锁定直接进入装备槽。
+ *    - 进入装备槽和装备选择列表后，完全恢复原生交互，不再干涉。
  * 
  * 4. 全局防误触保护：
  *    - 每次进入相关场景（物品/技能/装备）时，系统会在设置的保护时间内（默认 100ms）
@@ -60,6 +58,9 @@
  * v1.6 - 移除 TouchInput.clear()，修复手机端回退键失效问题；
  *        改为在指令窗口矩形内精确拦截空白点击；
  *        新增 Window_EquipSlot 空白点击激活，保留点装备槽空白解锁的行为。
+ * v1.7 - 修复点击装备槽空白处强制重置为第 0 个槽位（武器槽）导致的 Bug。
+ * v1.8 - 移除 Window_EquipSlot 的重写逻辑，仅在指令窗口处解除锁定，不再干涉装备槽与物品列表。
+ * v1.9 - 修复装备指令处点击框架外空白区域无法解除锁定的 BUG。
  */
 
 (function() {
@@ -181,8 +182,6 @@
     };
 
     // ===== 装备指令窗口场景层控制 =====
-    // 仅在点击落在指令窗口矩形内、且不是 0/1/2 号选项时触发解锁，
-    // 避免吃掉回退键、角色切换箭头等区域的触摸。
     const _Scene_Equip_update = Scene_Equip.prototype.update;
     Scene_Equip.prototype.update = function() {
         _Scene_Equip_update.call(this);
@@ -192,63 +191,29 @@
     Scene_Equip.prototype.updateCommandBlankTouch = function() {
         if (isGlobalTouchProtectionActive()) return;
         if (!this._commandWindow) return;
+        // 只有当焦点处于指令窗口且停留在第 0 项（"装备"）时生效
         if (!this._commandWindow.active || this._commandWindow.index() !== 0) return;
         if (!this._commandWindow.visible) return;
         if (!TouchInput.isTriggered()) return;
 
-        // 只在点击落在指令窗口矩形内时才处理，避免吃掉回退键/角色切换等区域
-        if (!this._commandWindow.isTouchedInsideFrame()) return;
-
         const tx = TouchInput.x;
         const ty = TouchInput.y;
-        const hitIndex = this._commandWindow.hitTest(tx, ty);
 
-        // 命中 0/1/2 号选项，交给原生逻辑处理
-        if (hitIndex === 0 || hitIndex === 1 || hitIndex === 2) return;
+        // 如果点击到了右上角的“取消/返回按钮”，不拦截，让原生逻辑处理返回
+        if (this._cancelButton && this._cancelButton.isPressed()) return;
 
-        // 点在指令窗口内的空白处：激活装备槽
+        // 如果点击到了左/右“切换角色按钮”，不拦截
+        if (this._pageupButton && this._pageupButton.isPressed()) return;
+        if (this._pagedownButton && this._pagedownButton.isPressed()) return;
+
+        // 如果点击到了“最强装备”(1号) 或 “全部脱下”(2号) 按钮，交给原生指令处理
+        if (this._commandWindow.isTouchedInsideFrame()) {
+            const hitIndex = this._commandWindow.hitTest(tx, ty);
+            if (hitIndex === 1 || hitIndex === 2) return;
+        }
+
+        // 点击界面任意其他区域（装备槽列表、界面空白处等）：直接解除指令锁定进入装备槽
         this._commandWindow.playOkSound();
         this._commandWindow.processOk();
-    };
-
-    // ===== 装备槽窗口：点击空白处激活并进入选择 =====
-    // 保留“点装备槽空白也能解锁”的行为，且不调用 TouchInput.clear()，
-    // 保证回退键等其它 UI 的触摸不被吞掉。
-    const _Window_EquipSlot_processTouch = Window_EquipSlot.prototype.processTouch;
-    Window_EquipSlot.prototype.processTouch = function() {
-        const scene = SceneManager._scene;
-        if (!(scene instanceof Scene_Equip)) {
-            _Window_EquipSlot_processTouch.call(this);
-            return;
-        }
-
-        // 角色选择窗口激活时，不处理装备槽
-        if (scene._actorWindow && scene._actorWindow.active) {
-            return;
-        }
-
-        if (isGlobalTouchProtectionActive()) return;
-
-        if (TouchInput.isTriggered()) {
-            const x = TouchInput.x, y = TouchInput.y;
-            if (this.isTouchedInsideFrame()) {
-                const hitIndex = this.hitTest(x, y);
-                if (!this.active) {
-                    // 先解除指令窗口的锁定
-                    if (scene._commandWindow) scene._commandWindow.deactivate();
-                    if (scene._statusWindow) scene._statusWindow.deactivate();
-
-                    this.activate();
-                    if (hitIndex >= 0) {
-                        this.select(hitIndex);
-                        this.processOk();
-                    } else {
-                        if (this.maxItems() > 0) this.select(0);
-                    }
-                    return;
-                }
-            }
-        }
-        _Window_EquipSlot_processTouch.call(this);
     };
 })();
