@@ -547,6 +547,12 @@
         <div class="panel single-drop-zone" id="singleDropZone">
             <h3>📂 上传文件</h3>
             <input type="file" id="uploadFile" accept="image/png,image/jpeg,image/webp">
+            
+            <div class="dir-buttons" id="modeButtons" style="margin-top: 10px;">
+                <button data-mode="pixel" class="dir-btn active">👾 像素图模式</button>
+                <button data-mode="avatar" class="dir-btn">🖼️ 头像模式</button>
+            </div>
+
             <div class="checkbox-group">
                 <input type="checkbox" id="autoDetect" checked>
                 <label style="margin:0">自动识别 ($开头 → 3x4 , 其他 → 12x8)</label>
@@ -621,6 +627,10 @@
     <!-- 批量上传区 -->
     <div class="batch-area" id="batchDropZone">
         <h2>📦 批量处理 </h2>
+        <div class="checkbox-group" style="margin: 6px 0 12px 0;">
+            <input type="checkbox" id="batchUseManualGrid">
+            <label style="margin:0">📐 使用上方单图区的手动网格设置（列/行、单帧尺寸、每角色行列）</label>
+        </div>
         <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
             <div style="flex:2">
                 <label>📎 选择多个行走图</label>
@@ -878,7 +888,9 @@
             const img = await loadImageFromFile(firstFile);
             originalImage = img;
             currentFileName = firstFile.name;
-            if (autoDetectCheck.checked) {
+            
+            const isAvatarMode = document.querySelector('#modeButtons .dir-btn.active')?.dataset.mode === 'avatar';
+            if (autoDetectCheck.checked && !isAvatarMode) {
                 const { cols, rows, colsPerRole, rowsPerRole } = detectGridFromFilename(firstFile.name);
                 colsInput.value = cols;
                 rowsInput.value = rows;
@@ -942,6 +954,44 @@
         if (filename.startsWith('$')) return { cols: 3, rows: 4, colsPerRole: 3, rowsPerRole: 1 };
         return { cols: 12, rows: 8, colsPerRole: 3, rowsPerRole: 4 };
     }
+
+    const modeButtons = document.querySelectorAll('#modeButtons .dir-btn');
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const mode = btn.dataset.mode;
+            if (mode === 'avatar') {
+                autoDetectCheck.checked = false;
+                colsInput.value = 4;
+                rowsInput.value = 2;
+                frameWInput.value = 144;
+                frameHInput.value = 144;
+                colsPerRoleInput.value = 1;
+                rowsPerRoleInput.value = 1;
+                frameIndicesInput.value = "0";
+                roleColOffsetInput.value = 0;
+                roleRowOffsetInput.value = 0;
+                setStatus('已切换到 头像模式 (4x2, 144x144, 单帧)');
+            } else {
+                autoDetectCheck.checked = true;
+                colsInput.value = 12;
+                rowsInput.value = 8;
+                frameWInput.value = 48;
+                frameHInput.value = 48;
+                colsPerRoleInput.value = 3;
+                rowsPerRoleInput.value = 4;
+                frameIndicesInput.value = "0,1,2,1";
+                setStatus('已切换到 像素图模式 (12x8, 48x48)');
+            }
+            
+            if (originalImage) {
+                buildRoleGrid();
+                if (previewInterval) startPreview();
+            }
+        });
+    });
 
     function parseFrameIndices(str) {
         return str.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);
@@ -1261,9 +1311,13 @@
         batchProgressArea.style.display = 'block';
         batchProgressFill.style.width = '0%';
         batchStatusText.innerText = '准备处理...';
-        
+
         const totalFiles = batchFiles.length;
         const commonParams = getCurrentImageParamsForAll();
+        
+        const isAvatarMode = document.querySelector('#modeButtons .dir-btn.active')?.dataset.mode === 'avatar';
+        const useManualGrid = document.getElementById('batchUseManualGrid').checked || isAvatarMode;
+        
         const frameIndices = commonParams.frameIndices;
         if (frameIndices.length === 0) {
             batchStatusText.innerText = '帧索引无效，请检查上方帧索引输入';
@@ -1272,21 +1326,37 @@
             batchSingleDirectBtn.disabled = false;
             return;
         }
-        
+
         let masterZip = null;
         if (mode === 'zip') masterZip = new JSZip();
         let totalRolesSuccess = 0;
         let anyFileProcessed = false;
-        
+
         for (let fIdx = 0; fIdx < batchFiles.length; fIdx++) {
             const file = batchFiles[fIdx];
             batchStatusText.innerText = `处理文件 ${fIdx+1}/${totalFiles}: ${file.name}`;
             batchProgressFill.style.width = `${(fIdx / totalFiles) * 100}%`;
             try {
                 const img = await loadImageFromFile(file);
-                const { cols, rows, colsPerRole, rowsPerRole } = detectGridFromFilename(file.name);
-                let frameW = 48, frameH = 48;
-                if (file.name.startsWith('$')) { frameW = 96; frameH = 96; }
+
+                let cols, rows, frameW, frameH, colsPerRole, rowsPerRole;
+                if (useManualGrid) {
+                    cols = commonParams.cols;
+                    rows = commonParams.rows;
+                    frameW = commonParams.frameW;
+                    frameH = commonParams.frameH;
+                    colsPerRole = commonParams.colsPerRole;
+                    rowsPerRole = commonParams.rowsPerRole;
+                } else {
+                    const detected = detectGridFromFilename(file.name);
+                    cols = detected.cols;
+                    rows = detected.rows;
+                    colsPerRole = detected.colsPerRole;
+                    rowsPerRole = detected.rowsPerRole;
+                    frameW = file.name.startsWith('$') ? 96 : 48;
+                    frameH = file.name.startsWith('$') ? 96 : 48;
+                }
+
                 const roleOffsets = getAllRoleOffsets(cols, rows, colsPerRole, rowsPerRole);
                 if (roleOffsets.length === 0) continue;
                 const baseName = file.name.replace(/\.[^/.]+$/, '');
@@ -1327,7 +1397,7 @@
                 setStatus(`文件 ${file.name} 加载失败: ${err.message}`, true);
             }
         }
-        
+
         if (!anyFileProcessed) {
             batchStatusText.innerText = '错误: 没有成功生成任何GIF，请检查图片格式和参数';
             batchProgressArea.style.display = 'none';
@@ -1335,7 +1405,7 @@
             batchSingleDirectBtn.disabled = false;
             return;
         }
-        
+
         if (mode === 'zip' && masterZip) {
             batchStatusText.innerText = `打包ZIP中 (${totalRolesSuccess} 个GIF)...`;
             try {
@@ -1343,7 +1413,9 @@
                 const url = URL.createObjectURL(finalZipBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `批量行走图_全角色_${Date.now()}.zip`;
+                // 根据头像模式修改 zip 文件名
+                const zipPrefix = isAvatarMode ? '批量头像' : '批量行走图';
+                a.download = `${zipPrefix}_全角色_${Date.now()}.zip`;
                 a.click();
                 URL.revokeObjectURL(url);
                 batchStatusText.innerText = `✅ 已导出 ${totalRolesSuccess} 个角色GIF，打包ZIP下载完成。`;
@@ -1355,7 +1427,7 @@
         } else if (mode === 'single') {
             batchStatusText.innerText = `✅ 已触发 ${totalRolesSuccess} 次下载，如果部分被浏览器拦截，请允许此页面的多个下载权限。`;
         }
-        
+
         setTimeout(() => {
             batchProgressArea.style.display = 'none';
             batchZipDirectBtn.disabled = false;
@@ -1458,7 +1530,13 @@
         generateAndDownloadBtn.addEventListener('click', generateAndDownloadSingle);
         exportAllRolesZipBtn.addEventListener('click', exportAllRolesAsZip);
         exportAllRolesSingleBtn.addEventListener('click', exportAllRolesAsSingle);
-        autoDetectCheck.addEventListener('change', () => { if(originalImage && autoDetectCheck.checked){ const {cols,rows,colsPerRole,rowsPerRole}=detectGridFromFilename(currentFileName); colsInput.value=cols; rowsInput.value=rows; colsPerRoleInput.value=colsPerRole; rowsPerRoleInput.value=rowsPerRole; buildRoleGrid(); } });
+        autoDetectCheck.addEventListener('change', () => { 
+            if(originalImage && autoDetectCheck.checked){ 
+                const {cols,rows,colsPerRole,rowsPerRole}=detectGridFromFilename(currentFileName); 
+                colsInput.value=cols; rowsInput.value=rows; colsPerRoleInput.value=colsPerRole; rowsPerRoleInput.value=rowsPerRole; 
+                buildRoleGrid(); 
+            } 
+        });
         applyOffsetBtn.addEventListener('click', () => { if(originalImage){ if(previewInterval) startPreview(); buildRoleGrid(); } });
         [colsInput, rowsInput, frameWInput, frameHInput, colsPerRoleInput, rowsPerRoleInput].forEach(inp => inp.addEventListener('change', () => buildRoleGrid()));
         initDirButtons();
