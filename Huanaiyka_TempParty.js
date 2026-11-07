@@ -68,6 +68,14 @@
  * @type struct<Preset>[]
  * @default []
  * 
+ * @param enableDeathProtection
+ * @text 启用全员死亡防护
+ * @desc 切换临时队伍后，若全队死亡则将第一位角色恢复为1HP，防止游戏结束。
+ * @type boolean
+ * @on 启用
+ * @off 禁用
+ * @default false
+ * 
  * @command SaveAndSwitch
  * @text 存储并切换队伍（自定义）
  * @desc 存储当前队伍，并切换到指定的临时角色列表
@@ -233,6 +241,7 @@
     const parameters = PluginManager.parameters('Huanaiyka_TempParty');
     const defaultVariableId = Number(parameters['defaultVariableId'] || 1);
     const defaultItemVariableId = Number(parameters['defaultItemVariableId'] || 2);
+    const enableDeathProtection = parameters['enableDeathProtection'] === 'true';
     
     // 解析默认临时成员列表
     let defaultTempMembers = [];
@@ -275,6 +284,37 @@
     function getValidItemVariableId(varId) {
         const num = Number(varId);
         return (num && num > 0) ? num : defaultItemVariableId;
+    }
+
+    /**
+     * 全员死亡防护检测
+     * 若队伍中所有角色均已死亡，则将队头角色恢复为 1 HP
+     * @param {boolean} force 是否强制检测（忽略插件参数开关）
+     */
+    function checkDeathProtection(force = false) {
+        if (!force && !enableDeathProtection) {
+            return false;
+        }
+        
+        const members = $gameParty.members();
+        if (members.length === 0) {
+            return false;
+        }
+        
+        // 检查是否全部死亡
+        const allDead = members.every(actor => actor.isDead());
+        if (!allDead) {
+            return false;
+        }
+        
+        // 将第一位角色恢复为 1 HP
+        const firstActor = members[0];
+        if (firstActor) {
+            firstActor.setHp(1);
+            return true;
+        }
+        
+        return false;
     }
 
     function storeParty(variableId) {
@@ -475,6 +515,10 @@ function parseItemTypes(typeStr) {
         storeParty(validVarId);
         clearParty();
         addActorsToParty(tempMemberIds);
+        
+        // 全员死亡防护检测
+        checkDeathProtection();
+        
         return true;
     }
 
@@ -504,6 +548,10 @@ function parseItemTypes(typeStr) {
         }
         clearParty();
         addActorsToParty(stored);
+        
+        // 全员死亡防护检测
+        checkDeathProtection();
+        
         return true;
     }
 
@@ -634,6 +682,7 @@ function parseItemTypes(typeStr) {
         restoreAll,
         parseItemTypes,
         getValidVariableId,
-        getValidItemVariableId
+        getValidItemVariableId,
+        checkDeathProtection
     };
 })();

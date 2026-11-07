@@ -31,6 +31,8 @@
  * - 插件仅在战斗场景中生效。
  * - 如果角色没有“攻击”命令（如某些事件或状态禁止攻击），则自动跳过该角色。
  * - 松开鼠标立即停止自动操作。
+ * - 与战斗加速插件（如 Huanaiyka_SpeedConfig）兼容：计时基于“真实帧”，
+ *   不会被加速倍率放大，长按延迟与连发间隔始终保持按真实时间计算。
  * 
  * @param holdButton
  * @text 触发按键
@@ -50,7 +52,7 @@
  * @default 60
  * @type number
  * @min 1
- * @max 60
+ * @max 600
  * 
  * @param targetIndex
  * @text 目标敌人索引
@@ -65,6 +67,7 @@
  * @default 120
  * @type number
  * @min 0
+ * @max 600
  */
 
 (() => {
@@ -75,7 +78,7 @@
     const holdButton = String(parameters['holdButton'] || 'left');
     const checkInterval = Number(parameters['checkInterval'] || 5);
     const targetIndex = Number(parameters['targetIndex'] || 0);
-    const firstDelay = Number(parameters['firstDelay'] || 15);  // 新增首次延迟参数
+    const firstDelay = Number(parameters['firstDelay'] || 15);  // 首次延迟参数
 
     // 鼠标按键映射
     const buttonMap = {
@@ -122,6 +125,11 @@
         if (!isHolding) return;                 // 没有长按则退出
         if (!(this instanceof Scene_Battle)) return;
 
+        // ★ 关键：只在真实帧推进计时，跳过加速插件额外调用的 updateMain
+        //   Huanaiyka_SpeedConfig 在战斗加速时会把 _battleSpeedDupe 设为 true
+        //   并重复调用 updateMain，若在此时推进计数器会导致实际延迟被倍率缩小。
+        if (SceneManager._battleSpeedDupe) return;
+
         // --- 首次延迟处理 ---
         if (!firstActionDone) {
             firstDelayCounter++;
@@ -137,7 +145,7 @@
             frameCounter = 0;
         }
 
-        // --- 自动操作核心代码（保持不变）---
+        // --- 自动操作核心代码 ---
         // 获取当前战斗状态
         const phase = BattleManager._phase;
         const actor = BattleManager.actor();     // 当前正在输入命令的角色
@@ -147,7 +155,6 @@
 
         // 获取角色的攻击技能
         const attackSkillId = actor.attackSkillId();
-        const attackSkill = $dataSkills[attackSkillId];
 
         // 检查角色是否可以使用攻击技能
         if (!actor.canUse($dataSkills[attackSkillId])) return;
