@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>RPG Maker行走图转GIF - 一键批量 | 点击即下载</title>
+    <title>RPG Maker行走图转GIF + 像素放大 | 一键批量</title>
     <style>
         * {
             box-sizing: border-box;
@@ -380,6 +380,34 @@
             padding-top: 15px;
             border-top: 1px solid #5a5a5a;
         }
+.inline-scale-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 16px;
+}
+.inline-scale-option label {
+    margin: 0;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    color: #eee;
+}
+.inline-scale-option select {
+    width: auto;
+    flex: 1;
+    background: #1e1e1e;
+    border-color: #5a5a5a;
+}
+.inline-scale-option input {
+    width: 70px;
+    background: #1e1e1e;
+    border-color: #5a5a5a;
+}
+        .small-hint {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-left: 4px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -541,7 +569,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>🎞️ RPG Maker行走图 → GIF动画</h1>
+    <h1>🎞️ RPG Maker行走图 → GIF动画 + 像素放大</h1>
 
     <div class="flex-row">
         <div class="panel single-drop-zone" id="singleDropZone">
@@ -575,6 +603,21 @@
                 <label>🧩 每个角色占行数</label>
                 <input type="number" id="rowsPerRole" value="4" step="1" min="1">
             </div>
+
+            <!-- ========== 新增：输出时放大选项 ========== -->
+            <div class="inline-scale-option">
+                <label>🔍 输出放大</label>
+<select id="outputScaleSelect">
+    <option value="1" selected>不放大 (x1)</option>
+    <option value="2">x2</option>
+    <option value="4">x4</option>
+    <option value="8">x8</option>
+    <option value="16">x16</option>
+    <option value="custom">自定义</option>
+</select>
+                <input type="number" id="outputCustomScale" value="8" min="1" step="1" style="display:none;" placeholder="倍数">
+            </div>
+
             <div class="role-panel-inner">
                 <h3>🎯 选择角色 </h3>
                 <div id="roleGridContainer" style="overflow-x: auto; min-height: 100px; text-align: center;">
@@ -657,7 +700,7 @@
         </div>
     </div>
 
-    <!-- ========== 独立模块：物理放大工具 ========== -->
+    <!-- ========== 独立模块：物理放大工具（保持原有） ========== -->
     <div class="scale-module">
         <h2>🔍 物理放大工具 (支持 GIF 与 静态单图)</h2>
         <div class="flex-row">
@@ -731,6 +774,7 @@
 </div>
 
 <script>
+    // ========== 全局变量 ==========
     const fileInput = document.getElementById('uploadFile');
     const autoDetectCheck = document.getElementById('autoDetect');
     const colsInput = document.getElementById('cols');
@@ -773,6 +817,10 @@
     const dirMap = { down: 0, left: 1, up: 3, right: 2 };
     let activeDirs = { down: true, left: false, up: false, right: false };
 
+    // 新增：输出放大控件
+    const outputScaleSelect = document.getElementById('outputScaleSelect');
+    const outputCustomScale = document.getElementById('outputCustomScale');
+
     let originalImage = null;
     let previewInterval = null;
     let currentFileName = "walk";
@@ -786,6 +834,23 @@
     function showZipNotice() {
         footerZipNotice.style.display = 'block';
     }
+
+    // ========== 工具函数 ==========
+    function getOutputScaleFactor() {
+        const sel = outputScaleSelect.value;
+        if (sel === 'custom') {
+            let val = parseInt(outputCustomScale.value, 10);
+            if (isNaN(val) || val < 1) val = 1;
+            return val;
+        } else {
+            return parseInt(sel, 10) || 1;
+        }
+    }
+
+    // 初始化输出放大下拉事件
+    outputScaleSelect.addEventListener('change', () => {
+        outputCustomScale.style.display = outputScaleSelect.value === 'custom' ? 'block' : 'none';
+    });
 
     function isFileDuplicate(newFile, existingFiles) {
         return existingFiles.some(f => f.name === newFile.name && f.size === newFile.size && f.lastModified === newFile.lastModified);
@@ -1054,6 +1119,7 @@
         if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
     }
 
+    // 注意：预览时也按放大倍数显示（但预览是实时绘制，与输出放大一致）
     function startPreview() {
         if (!originalImage) { setStatus('请先上传行走图', true); return false; }
         stopPreview();
@@ -1072,23 +1138,30 @@
         const colOffset = getColOffset();
         const sequence = buildAnimationSequence(allFrames, cols, selectedRows, frameIndices, colOffset);
         if (sequence.length === 0) { setStatus('没有有效的动画帧', true); return false; }
+        
+        const outScale = getOutputScaleFactor();
+        const displayW = frameW * outScale;
+        const displayH = frameH * outScale;
         let idx = 0;
-        previewCanvas.width = frameW;
-        previewCanvas.height = frameH;
+        previewCanvas.width = displayW;
+        previewCanvas.height = displayH;
         const ctx = previewCanvas.getContext('2d');
-        ctx.clearRect(0, 0, frameW, frameH);
+        ctx.imageSmoothingEnabled = false; // 像素放大时保持硬边缘
+        ctx.clearRect(0, 0, displayW, displayH);
         previewInterval = setInterval(() => {
             const frameObj = sequence[idx % sequence.length];
-            ctx.clearRect(0, 0, frameW, frameH);
-            ctx.drawImage(frameObj.canvas, 0, 0);
+            ctx.clearRect(0, 0, displayW, displayH);
+            // 放大绘制，但保持像素风格
+            ctx.drawImage(frameObj.canvas, 0, 0, displayW, displayH);
             idx++;
         }, delay);
-        setStatus(`预览中 → 共 ${sequence.length} 帧`);
+        setStatus(`预览中 (x${outScale}) → 共 ${sequence.length} 帧`);
         return true;
     }
 
+    // 生成GIF的核心函数，支持输出放大
     async function generateGifForRole(img, roleCol, roleRow, params) {
-        const { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows } = params;
+        const { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows, outputScale = 1 } = params;
         const colOffset = roleCol * colsPerRole;
         const rowOffset = roleRow * rowsPerRole;
         const allFrames = extractFramesFromImage(img, cols, rows, frameW, frameH);
@@ -1097,26 +1170,40 @@
         const sequence = buildAnimationSequence(allFrames, cols, finalRows, frameIndices, colOffset);
         if (sequence.length === 0) throw new Error('动画序列为空');
         const workerUrl = await getWorkerScriptUrl();
+
+        const outW = frameW * outputScale;
+        const outH = frameH * outputScale;
+
         return new Promise((resolve, reject) => {
             const gif = new GIF({
                 workers: 2,
                 quality,
-                width: frameW,
-                height: frameH,
+                width: outW,
+                height: outH,
                 repeat,
                 workerScript: workerUrl,
                 transparent: 0x00FF00
             });
             for (let i = 0; i < sequence.length; i++) {
                 const srcCanvas = sequence[i].canvas;
-                const srcCtx = srcCanvas.getContext('2d');
-                const imgData = srcCtx.getImageData(0, 0, frameW, frameH);
+                // 先按输出倍数放大绘制到临时画布
+                const scaledCanvas = document.createElement('canvas');
+                scaledCanvas.width = outW;
+                scaledCanvas.height = outH;
+                const scaledCtx = scaledCanvas.getContext('2d');
+                scaledCtx.imageSmoothingEnabled = false;
+                scaledCtx.clearRect(0, 0, outW, outH);
+                scaledCtx.drawImage(srcCanvas, 0, 0, outW, outH);
+                
+                // 处理透明色
+                const srcCtx = scaledCanvas.getContext('2d');
+                const imgData = srcCtx.getImageData(0, 0, outW, outH);
                 const data = imgData.data;
                 const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = frameW;
-                tempCanvas.height = frameH;
+                tempCanvas.width = outW;
+                tempCanvas.height = outH;
                 const tempCtx = tempCanvas.getContext('2d');
-                const newImgData = tempCtx.createImageData(frameW, frameH);
+                const newImgData = tempCtx.createImageData(outW, outH);
                 const newData = newImgData.data;
 
                 for (let px = 0; px < data.length; px += 4) {
@@ -1173,7 +1260,8 @@
         const quality = parseInt(qualityInput.value, 10);
         const frameIndices = parseFrameIndices(frameIndicesInput.value);
         const baseDirectionRows = getBaseSelectedRows();
-        return { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows };
+        const outputScale = getOutputScaleFactor();
+        return { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows, outputScale };
     }
 
     async function generateAndDownloadSingle() {
@@ -1191,25 +1279,37 @@
         const sequence = buildAnimationSequence(allFrames, params.cols, selectedRows, frameIndices, colOff);
         if (sequence.length === 0) { setStatus('动画序列为空', true); return; }
         const workerUrl = await getWorkerScriptUrl();
+
+        const outW = params.frameW * params.outputScale;
+        const outH = params.frameH * params.outputScale;
+
         const gif = new GIF({
             workers: 2,
             quality: params.quality,
-            width: params.frameW,
-            height: params.frameH,
+            width: outW,
+            height: outH,
             repeat: params.repeat,
             workerScript: workerUrl,
             transparent: 0x00FF00
         });
         for (let f of sequence) {
-            const srcCanvas = f.canvas;
-            const srcCtx = srcCanvas.getContext('2d');
-            const imgData = srcCtx.getImageData(0, 0, params.frameW, params.frameH);
+            // 放大绘制
+            const scaledCanvas = document.createElement('canvas');
+            scaledCanvas.width = outW;
+            scaledCanvas.height = outH;
+            const scaledCtx = scaledCanvas.getContext('2d');
+            scaledCtx.imageSmoothingEnabled = false;
+            scaledCtx.clearRect(0, 0, outW, outH);
+            scaledCtx.drawImage(f.canvas, 0, 0, outW, outH);
+
+            const srcCtx = scaledCanvas.getContext('2d');
+            const imgData = srcCtx.getImageData(0, 0, outW, outH);
             const data = imgData.data;
             const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = params.frameW;
-            tempCanvas.height = params.frameH;
+            tempCanvas.width = outW;
+            tempCanvas.height = outH;
             const tempCtx = tempCanvas.getContext('2d');
-            const newImgData = tempCtx.createImageData(params.frameW, params.frameH);
+            const newImgData = tempCtx.createImageData(outW, outH);
             const newData = newImgData.data;
 
             for (let px = 0; px < data.length; px += 4) {
@@ -1240,12 +1340,12 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${currentFileName.replace(/\.[^/.]+$/, '')}_角色_${roleColOffsetInput.value}_${roleRowOffsetInput.value}.gif`;
+            a.download = `${currentFileName.replace(/\.[^/.]+$/, '')}_角色_${roleColOffsetInput.value}_${roleRowOffsetInput.value}_x${params.outputScale}.gif`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            setStatus(`✅ 已下载 GIF`);
+            setStatus(`✅ 已下载 GIF (放大 x${params.outputScale})`);
         });
         gif.render();
     }
@@ -1262,7 +1362,7 @@
         for (let { col, row } of roleOffsets) {
             try {
                 const blob = await generateGifForRole(originalImage, col, row, params);
-                zip.file(`${baseName}_角色_${col}_${row}.gif`, blob);
+                zip.file(`${baseName}_角色_${col}_${row}_x${params.outputScale}.gif`, blob);
                 successCount++;
             } catch(e) { console.warn(e); }
         }
@@ -1271,7 +1371,7 @@
         const url = URL.createObjectURL(zipBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${baseName}_全角色GIFs.zip`;
+        a.download = `${baseName}_全角色GIFs_x${params.outputScale}.zip`;
         a.click();
         URL.revokeObjectURL(url);
         setStatus(`✅ 已导出 ${successCount} 个角色GIF，打包ZIP下载完成。`);
@@ -1291,7 +1391,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${baseName}_角色_${col}_${row}.gif`;
+                a.download = `${baseName}_角色_${col}_${row}_x${params.outputScale}.gif`;
                 a.click();
                 URL.revokeObjectURL(url);
                 successCount++;
@@ -1369,10 +1469,11 @@
                             repeat: commonParams.repeat,
                             quality: commonParams.quality,
                             frameIndices: commonParams.frameIndices,
-                            baseDirectionRows: commonParams.baseDirectionRows
+                            baseDirectionRows: commonParams.baseDirectionRows,
+                            outputScale: commonParams.outputScale
                         };
                         const blob = await generateGifForRole(img, col, row, paramsForThis);
-                        const filename = `${baseName}_角色_${col}_${row}.gif`;
+                        const filename = `${baseName}_角色_${col}_${row}_x${commonParams.outputScale}.gif`;
                         if (mode === 'zip') {
                             masterZip.file(filename, blob);
                         } else {
@@ -1413,9 +1514,8 @@
                 const url = URL.createObjectURL(finalZipBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                // 根据头像模式修改 zip 文件名
                 const zipPrefix = isAvatarMode ? '批量头像' : '批量行走图';
-                a.download = `${zipPrefix}_全角色_${Date.now()}.zip`;
+                a.download = `${zipPrefix}_全角色_x${commonParams.outputScale}_${Date.now()}.zip`;
                 a.click();
                 URL.revokeObjectURL(url);
                 batchStatusText.innerText = `✅ 已导出 ${totalRolesSuccess} 个角色GIF，打包ZIP下载完成。`;
@@ -1547,7 +1647,7 @@
     setupDragZones();
     setStatus('✅ 就绪。支持拖拽文件上传。');
 
-    // ========== 放大工具逻辑 ==========
+    // ========== 放大工具逻辑（原样保留，已适配全局） ==========
     (function() {
         const scaleUpload = document.getElementById('scaleUpload');
         const scaleFactor = document.getElementById('scaleFactor');
