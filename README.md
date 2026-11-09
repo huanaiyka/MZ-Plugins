@@ -20,7 +20,7 @@ Plugins for RPG Maker MZ
 | 插件 | 说明 |
 | --- | --- |
 | [Huanaiyka_AoeDamageCut.js](Huanaiyka_AoeDamageCut.js) | **AOE攻击的伤害削减**<br><sub>此插件允许你为“全体攻击”的伤害设置一个固定百分比削减。例如设置削减 20%，则全体攻击的最终伤害会变为原来的 80%。</sub> |
-| [Huanaiyka_BlockElementOnAdditional.js](Huanaiyka_BlockElementOnAdditional.js) | **屏蔽普通攻击的指定属性**<br><sub>使用DarkPlasma_MultiElementAction.js给普通攻击追加“一般”属性后，当武器为普通攻击赋予“火”属性时，去除原有的“一般”属性。</sub> |
+| [Huanaiyka_AttackElementOverride.js](Huanaiyka_AttackElementOverride.js) | **武器属性覆盖普通攻击原有属性**<br><sub>当普通攻击（攻击技能）通过武器获得了属性时，完全覆盖普通攻击原本自带的属性，而不是在其基础上追加。</sub> |
 | [Huanaiyka_CriticalDamage.js](Huanaiyka_CriticalDamage.js) | **全局暴击伤害倍率调整插件**<br><sub>本插件允许你通过参数修改游戏全局的暴击伤害倍率。</sub> |
 | [Huanaiyka_EffectiveBoost.js](Huanaiyka_EffectiveBoost.js) | **特殊装备使属性克制时增伤**<br><sub>本插件可以在攻击属性克制目标（属性有效度 > 100%）时，额外提升伤害倍率。在武器或防具的备注栏中写入：`<EffectiveBoost: 倍率>`</sub> |
 | [Huanaiyka_EnemyStateDamageBoost.js](Huanaiyka_EnemyStateDamageBoost.js) | **特定技能对异常状态的敌人伤害翻倍**<br><sub>该插件的功能完全可被伤害公式：`(基础伤害公式) * (b.isStateAffected(状态ID) ? 2 : 1)`替代。</sub> |
