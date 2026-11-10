@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>RPG Maker行走图转GIF + 像素放大 | 一键批量</title>
     <style>
+                /* 底部紧凑版提示样式 */
+        .compact-notice {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            font-size: 0.8rem;
+            color: #aaa;
+            line-height: 1.8;
+        }
+        .compact-notice p {
+            margin: 0;
+        }
+        .compact-notice .separator {
+            margin: 0 8px;
+            color: #666;
+        }
+        .compact-notice a {
+            color: #61a0af;
+            text-decoration: none;
+        }
+        .compact-notice a:hover {
+            text-decoration: underline;
+        }
+        
         * {
             box-sizing: border-box;
         }
@@ -783,7 +808,7 @@
         </div>
     </div>
 
-    <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
+       <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
     <div class="footer-notice">
         <!-- 左侧：解除锁定提示 -->
         <div class="footer-section">
@@ -800,20 +825,14 @@
             </div>
         </div>
         
-        <!-- 右侧：使用须知 & 作者 -->
+        <!-- 右侧：使用须知 & 作者 (单行紧凑版) -->
         <div class="footer-section">
-            <h4>▲ 使用须知</h4>
-            <ul style="margin-bottom: 10px;">
-                <li>本工具仅用于处理自作的行走图或公开授权的素材。</li>
-                <li>请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</li>
-            </ul>
-            <h4>★ 关于作者</h4>
-            <p style="margin: 0;">作者：幻爱 / Huanaiyka</p>
-            <p style="margin: 0;">发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
+            <div class="compact-notice">
+                <p>★ 本工具仅用于处理自作的行走图或公开授权的素材 <span class="separator">|</span> 请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</p>
+                <p>★ 作者：幻爱 / Huanaiyka <span class="separator">|</span> 发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
+            </div>
         </div>
     </div>
-</div>
-
 <script>
     // ========== 全局变量 ==========
     const fileInput = document.getElementById('uploadFile');
