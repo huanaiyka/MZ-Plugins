@@ -709,15 +709,15 @@
                 <input type="file" id="scaleUpload" accept="image/gif,image/png,image/jpeg,image/webp">
                 <div style="margin: 12px 0;">
                     <label>🔢 放大倍数 (整数 ≥2)</label>
-                    <div class="dir-buttons" id="scaleBtnGroup">
-                        <button data-scale="2" class="dir-btn">x2</button>
-                        <button data-scale="4" class="dir-btn">x4</button>
-                        <button data-scale="8" class="dir-btn active">x8</button>
-                        <button data-scale="16" class="dir-btn">x16</button>
-                        <button data-scale="custom" class="dir-btn">自定义</button>
-                    </div>
+<div class="dir-buttons" id="scaleBtnGroup">
+    <button data-scale="2" class="dir-btn">x2</button>
+    <button data-scale="4" class="dir-btn">x4</button>
+    <button data-scale="8" class="dir-btn">x8</button>
+    <button data-scale="16" class="dir-btn active">x16</button>
+    <button data-scale="custom" class="dir-btn">自定义</button>
+</div>
                     <div id="customScaleContainer" style="display:none; margin-top:8px;">
-                        <input type="number" id="scaleFactor" value="8" min="2" step="1" placeholder="输入放大倍数">
+                        <input type="number" id="scaleFactor" value="16" min="2" step="1" placeholder="输入放大倍数">
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
