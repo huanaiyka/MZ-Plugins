@@ -5,37 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>RPG Maker行走图转GIF + 像素放大 | 一键批量</title>
     <style>
-          /* 底部显眼提示框样式 */
-        .notice-info-box {
-            background: #3a2a1f;
-            border-left: 4px solid #ffaa44;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            color: #ffdd99;
-            line-height: 1.6;
+        /* 底部提示与使用须知布局 */
+        .footer-notice {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #5a5a5a;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
-            box-shadow: 0 0 0 1px rgba(255, 170, 68, 0.2) inset;
+            flex-wrap: wrap;
+            gap: 30px;
         }
-        .notice-info-box p {
-            margin: 0;
+        .footer-section {
+            flex: 1;
+            min-width: 300px;
         }
-        .notice-info-box p:first-child {
-            margin-bottom: 6px;
-        }
-        .notice-info-box .sep {
-            margin: 0 8px;
-            color: #8c7662;
+        .footer-section h4 {
+            margin: 0 0 10px 0;
+            color: #ffd966; /* 与你页面标题颜色一致 */
+            font-size: 0.95rem;
             font-weight: bold;
         }
-        .notice-info-box a {
+        .footer-text {
+            margin: 6px 0;
+            color: #bbb;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .footer-text a {
             color: #61a0af;
             text-decoration: none;
         }
-        .notice-info-box a:hover {
+        .footer-text a:hover {
             text-decoration: underline;
         }
         
@@ -817,7 +816,7 @@
         </div>
     </div>
 
-         <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
+            <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
     <div class="footer-notice">
         <!-- 左侧：解除锁定提示 -->
         <div class="footer-section">
@@ -834,12 +833,15 @@
             </div>
         </div>
         
-        <!-- 右侧：使用须知 & 作者 (显眼提示框版) -->
+        <!-- 右侧：使用须知 & 作者 (清爽分栏版) -->
         <div class="footer-section">
-            <div class="notice-info-box">
-                <p>★ 本工具仅用于处理自作的行走图或公开授权的素材 <span class="sep">|</span> 请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</p>
-                <p>★ 作者：幻爱 / Huanaiyka <span class="sep">|</span> 发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
-            </div>
+            <h4>▲ 使用须知</h4>
+            <p class="footer-text">本工具仅用于处理自作的行走图或公开授权的素材。</p>
+            <p class="footer-text">请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</p>
+            
+            <h4 style="margin-top: 15px;">★ 关于作者</h4>
+            <p class="footer-text">作者：幻爱 / Huanaiyka</p>
+            <p class="footer-text">发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
         </div>
     </div>
 <script>
