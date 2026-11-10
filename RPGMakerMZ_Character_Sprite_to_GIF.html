@@ -380,33 +380,124 @@
             padding-top: 15px;
             border-top: 1px solid #5a5a5a;
         }
-.inline-scale-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 10px 0 16px;
-}
-.inline-scale-option label {
-    margin: 0;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    color: #eee;
-}
-.inline-scale-option select {
-    width: auto;
-    flex: 1;
-    background: #1e1e1e;
-    border-color: #5a5a5a;
-}
-.inline-scale-option input {
-    width: 70px;
-    background: #1e1e1e;
-    border-color: #5a5a5a;
-}
+        .inline-scale-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 16px;
+        }
+        .inline-scale-option label {
+            margin: 0;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            color: #eee;
+        }
+        .inline-scale-option select {
+            width: auto;
+            flex: 1;
+            background: #1e1e1e;
+            border-color: #5a5a5a;
+        }
+        .inline-scale-option input {
+            width: 70px;
+            background: #1e1e1e;
+            border-color: #5a5a5a;
+        }
         .small-hint {
             font-size: 0.7rem;
             color: #aaa;
             margin-left: 4px;
+        }
+
+        /* ================= 关于弹窗样式 ================= */
+        .notice-btn {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            padding: 8px 15px;
+            background-color: #2c3e50;
+            color: white;
+            border: 2px solid #ffaa44;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: background 0.3s, transform 0.2s;
+            z-index: 1000;
+            width: auto;
+            margin: 0;
+        }
+        .notice-btn:hover {
+            background-color: #1a252f;
+            transform: scale(1.05);
+        }
+        .notice-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        .notice-content {
+            background-color: #3c3c3c;
+            color: #eee;
+            border: 1px solid #5a5a5a;
+            margin: 10% auto;
+            padding: 20px 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: left;
+        }
+        .notice-content h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #ffd966;
+            border-left: none;
+            padding-left: 0;
+        }
+        .notice-content ul {
+            padding-left: 20px;
+            margin: 0;
+            color: #ccc;
+        }
+        .notice-content p {
+            margin: 5px 0;
+            color: #ccc;
+        }
+        .notice-content a {
+            color: #61a0af;
+            text-decoration: none;
+        }
+        .notice-content a:hover {
+            text-decoration: underline;
+        }
+        .notice-content .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #aaa;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+            background: none;
+            border: none;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+        }
+        .notice-content .close-btn:hover {
+            color: #ffaa44;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
@@ -604,17 +695,17 @@
                 <input type="number" id="rowsPerRole" value="4" step="1" min="1">
             </div>
 
-            <!-- ========== 新增：输出时放大选项 ========== -->
+            <!-- 输出时放大选项 -->
             <div class="inline-scale-option">
                 <label>🔍 输出放大</label>
-<select id="outputScaleSelect">
-    <option value="1" selected>不放大 (x1)</option>
-    <option value="2">x2</option>
-    <option value="4">x4</option>
-    <option value="8">x8</option>
-    <option value="16">x16</option>
-    <option value="custom">自定义</option>
-</select>
+                <select id="outputScaleSelect">
+                    <option value="1" selected>不放大 (x1)</option>
+                    <option value="2">x2</option>
+                    <option value="4">x4</option>
+                    <option value="8">x8</option>
+                    <option value="16">x16</option>
+                    <option value="custom">自定义</option>
+                </select>
                 <input type="number" id="outputCustomScale" value="8" min="1" step="1" style="display:none;" placeholder="倍数">
             </div>
 
@@ -700,7 +791,7 @@
         </div>
     </div>
 
-    <!-- ========== 独立模块：物理放大工具（保持原有） ========== -->
+    <!-- 独立模块：物理放大工具 -->
     <div class="scale-module">
         <h2>🔍 物理放大工具 (支持 GIF 与 静态单图)</h2>
         <div class="flex-row">
@@ -709,13 +800,13 @@
                 <input type="file" id="scaleUpload" accept="image/gif,image/png,image/jpeg,image/webp">
                 <div style="margin: 12px 0;">
                     <label>🔢 放大倍数 (整数 ≥2)</label>
-<div class="dir-buttons" id="scaleBtnGroup">
-    <button data-scale="2" class="dir-btn">x2</button>
-    <button data-scale="4" class="dir-btn">x4</button>
-    <button data-scale="8" class="dir-btn">x8</button>
-    <button data-scale="16" class="dir-btn active">x16</button>
-    <button data-scale="custom" class="dir-btn">自定义</button>
-</div>
+                    <div class="dir-buttons" id="scaleBtnGroup">
+                        <button data-scale="2" class="dir-btn">x2</button>
+                        <button data-scale="4" class="dir-btn">x4</button>
+                        <button data-scale="8" class="dir-btn">x8</button>
+                        <button data-scale="16" class="dir-btn active">x16</button>
+                        <button data-scale="custom" class="dir-btn">自定义</button>
+                    </div>
                     <div id="customScaleContainer" style="display:none; margin-top:8px;">
                         <input type="number" id="scaleFactor" value="16" min="2" step="1" placeholder="输入放大倍数">
                     </div>
@@ -758,18 +849,40 @@
         </div>
     </div>
 
-<!-- 底部通知 -->
-<div class="footer-notice">
-    <div id="footerZipNotice" class="closable-notice">
-        <button class="close-btn" id="footerCloseNoticeBtn" title="关闭提示">✕</button>
-        <div class="notice-header">
-            <span class="notice-icon">💡</span>
-            <span class="notice-title">下载文件被 Windows 阻止打开怎么办？</span>
+    <!-- 底部通知 -->
+    <div class="footer-notice">
+        <div id="footerZipNotice" class="closable-notice">
+            <button class="close-btn" id="footerCloseNoticeBtn" title="关闭提示">✕</button>
+            <div class="notice-header">
+                <span class="notice-icon">💡</span>
+                <span class="notice-title">下载文件被 Windows 阻止打开怎么办？</span>
+            </div>
+            <div class="notice-content">
+                <p>右键点击下载的文件 → <strong>属性</strong> → 勾选 <strong>“解除锁定”</strong> → 确定。</p>
+                <p>若下载的是 <code>.zip</code> 格式，请<strong>先对压缩包解除锁定再解压</strong>，解压出的所有文件即可正常打开。</p>
+            </div>
         </div>
-        <div class="notice-content">
-            <p>右键点击下载的文件 → <strong>属性</strong> → 勾选 <strong>“解除锁定”</strong> → 确定。</p>
-            <p>若下载的是 <code>.zip</code> 格式，请<strong>先对压缩包解除锁定再解压</strong>，解压出的所有文件即可正常打开。</p>
-        </div>
+    </div>
+</div>
+
+<!-- ================= 悬浮按钮 & 弹窗 ================= -->
+<button id="notice-btn" class="notice-btn">▲ 使用须知 / 关于</button>
+
+<div id="notice-modal" class="notice-modal">
+    <div class="notice-content">
+        <span class="close-btn" id="close-notice-btn">&times;</span>
+        
+        <h3>▲ 使用须知</h3>
+        <ul>
+            <li>本工具仅用于处理自作的行走图或公开授权的素材。</li>
+            <li>请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</li>
+        </ul>
+        
+        <hr style="border: 0; border-top: 1px dashed #5a5a5a; margin: 15px 0;">
+        
+        <h3>★ 关于作者</h3>
+        <p>作者：幻爱 / Huanaiyka</p>
+        <p>发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
     </div>
 </div>
 
@@ -829,10 +942,12 @@
 
     const footerZipNotice = document.getElementById('footerZipNotice');
     const footerCloseNoticeBtn = document.getElementById('footerCloseNoticeBtn');
-    footerCloseNoticeBtn.addEventListener('click', () => { footerZipNotice.style.display = 'none'; });
+    if(footerCloseNoticeBtn) {
+        footerCloseNoticeBtn.addEventListener('click', () => { footerZipNotice.style.display = 'none'; });
+    }
 
     function showZipNotice() {
-        footerZipNotice.style.display = 'block';
+        if(footerZipNotice) footerZipNotice.style.display = 'block';
     }
 
     // ========== 工具函数 ==========
@@ -1119,7 +1234,6 @@
         if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
     }
 
-    // 注意：预览时也按放大倍数显示（但预览是实时绘制，与输出放大一致）
     function startPreview() {
         if (!originalImage) { setStatus('请先上传行走图', true); return false; }
         stopPreview();
@@ -1146,12 +1260,11 @@
         previewCanvas.width = displayW;
         previewCanvas.height = displayH;
         const ctx = previewCanvas.getContext('2d');
-        ctx.imageSmoothingEnabled = false; // 像素放大时保持硬边缘
+        ctx.imageSmoothingEnabled = false;
         ctx.clearRect(0, 0, displayW, displayH);
         previewInterval = setInterval(() => {
             const frameObj = sequence[idx % sequence.length];
             ctx.clearRect(0, 0, displayW, displayH);
-            // 放大绘制，但保持像素风格
             ctx.drawImage(frameObj.canvas, 0, 0, displayW, displayH);
             idx++;
         }, delay);
@@ -1159,7 +1272,6 @@
         return true;
     }
 
-    // 生成GIF的核心函数，支持输出放大
     async function generateGifForRole(img, roleCol, roleRow, params) {
         const { cols, rows, frameW, frameH, colsPerRole, rowsPerRole, delay, repeat, quality, frameIndices, baseDirectionRows, outputScale = 1 } = params;
         const colOffset = roleCol * colsPerRole;
@@ -1186,7 +1298,6 @@
             });
             for (let i = 0; i < sequence.length; i++) {
                 const srcCanvas = sequence[i].canvas;
-                // 先按输出倍数放大绘制到临时画布
                 const scaledCanvas = document.createElement('canvas');
                 scaledCanvas.width = outW;
                 scaledCanvas.height = outH;
@@ -1195,7 +1306,6 @@
                 scaledCtx.clearRect(0, 0, outW, outH);
                 scaledCtx.drawImage(srcCanvas, 0, 0, outW, outH);
                 
-                // 处理透明色
                 const srcCtx = scaledCanvas.getContext('2d');
                 const imgData = srcCtx.getImageData(0, 0, outW, outH);
                 const data = imgData.data;
@@ -1293,7 +1403,6 @@
             transparent: 0x00FF00
         });
         for (let f of sequence) {
-            // 放大绘制
             const scaledCanvas = document.createElement('canvas');
             scaledCanvas.width = outW;
             scaledCanvas.height = outH;
@@ -1647,7 +1756,7 @@
     setupDragZones();
     setStatus('✅ 就绪。支持拖拽文件上传。');
 
-    // ========== 放大工具逻辑（原样保留，已适配全局） ==========
+    // ========== 放大工具逻辑 ==========
     (function() {
         const scaleUpload = document.getElementById('scaleUpload');
         const scaleFactor = document.getElementById('scaleFactor');
@@ -2024,144 +2133,28 @@
         });
     })();
 
-<!-- 悬浮按钮 -->
-<button id="notice-btn" class="notice-btn">▲ 使用须知 / 关于</button>
+    // ========== 关于弹窗逻辑 ==========
+    (function() {
+        const modal = document.getElementById("notice-modal");
+        const btn = document.getElementById("notice-btn");
+        const closeBtn = document.getElementById("close-notice-btn");
 
-<!-- 弹窗遮罩与内容 -->
-<div id="notice-modal" class="notice-modal">
-    <div class="notice-content">
-        <span class="close-btn" id="close-btn">&times;</span>
-        
-        <h3>▲ 使用须知</h3>
-        <ul>
-            <li>本工具仅用于处理自作的行走图或公开授权的素材。</li>
-            <li>请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</li>
-        </ul>
-        
-        <hr style="border: 0; border-top: 1px dashed #ccc; margin: 15px 0;">
-        
-        <h3>★ 关于作者</h3>
-        <p>作者：幻爱 / Huanaiyka</p>
-        <p>发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
-    </div>
-</div>
+        if(btn && modal && closeBtn) {
+            btn.onclick = function() {
+                modal.style.display = "block";
+            }
 
-<!-- 样式 -->
-<style>
-    /* 悬浮按钮样式 */
-    .notice-btn {
-        position: fixed;
-        left: 20px;
-        bottom: 20px;
-        padding: 8px 15px;
-        background-color: #2c3e50;
-        color: white;
-        border: none;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 14px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        transition: background 0.3s;
-        z-index: 1000;
-    }
-    .notice-btn:hover {
-        background-color: #1a252f;
-    }
+            closeBtn.onclick = function() {
+                modal.style.display = "none";
+            }
 
-    /* 弹窗遮罩层 */
-    .notice-modal {
-        display: none; /* 默认隐藏 */
-        position: fixed;
-        z-index: 1001;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* 半透明黑底 */
-    }
-
-    /* 弹窗内容框 */
-    .notice-content {
-        background-color: #fff;
-        margin: 15% auto;
-        padding: 20px 25px;
-        border-radius: 8px;
-        width: 80%;
-        max-width: 450px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        position: relative;
-        font-size: 14px;
-        color: #333;
-        line-height: 1.6;
-        text-align: left; /* 防止继承页面居中 */
-    }
-
-    .notice-content h3 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 16px;
-        color: #2c3e50;
-    }
-    
-    .notice-content ul {
-        padding-left: 20px;
-        margin: 0;
-    }
-    
-    .notice-content p {
-        margin: 5px 0;
-    }
-
-    .notice-content a {
-        color: #0366d6;
-        text-decoration: none;
-    }
-
-    .notice-content a:hover {
-        text-decoration: underline;
-    }
-
-    /* 关闭按钮 */
-    .close-btn {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        color: #aaa;
-        font-size: 24px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: color 0.3s;
-    }
-
-    .close-btn:hover,
-    .close-btn:focus {
-        color: #000;
-        text-decoration: none;
-    }
-</style>
-
-<!-- 交互逻辑 -->
-<script>
-    const modal = document.getElementById("notice-modal");
-    const btn = document.getElementById("notice-btn");
-    const closeBtn = document.getElementById("close-btn");
-
-    // 点击按钮打开弹窗
-    btn.onclick = function() {
-        modal.style.display = "block";
-    }
-
-    // 点击“×”关闭弹窗
-    closeBtn.onclick = function() {
-        modal.style.display = "none";
-    }
-
-    // 点击弹窗外部（遮罩层）也能关闭弹窗
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
         }
-    }
+    })();
 </script>
 </body>
 </html>
