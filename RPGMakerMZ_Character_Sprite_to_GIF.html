@@ -5,28 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>RPG Maker行走图转GIF + 像素放大 | 一键批量</title>
     <style>
-                /* 底部紧凑版提示样式 */
-        .compact-notice {
+          /* 底部显眼提示框样式 */
+        .notice-info-box {
+            background: #3a2a1f;
+            border-left: 4px solid #ffaa44;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #ffdd99;
+            line-height: 1.6;
             display: flex;
             flex-direction: column;
             justify-content: center;
             height: 100%;
-            font-size: 0.8rem;
-            color: #aaa;
-            line-height: 1.8;
+            box-shadow: 0 0 0 1px rgba(255, 170, 68, 0.2) inset;
         }
-        .compact-notice p {
+        .notice-info-box p {
             margin: 0;
         }
-        .compact-notice .separator {
-            margin: 0 8px;
-            color: #666;
+        .notice-info-box p:first-child {
+            margin-bottom: 6px;
         }
-        .compact-notice a {
+        .notice-info-box .sep {
+            margin: 0 8px;
+            color: #8c7662;
+            font-weight: bold;
+        }
+        .notice-info-box a {
             color: #61a0af;
             text-decoration: none;
         }
-        .compact-notice a:hover {
+        .notice-info-box a:hover {
             text-decoration: underline;
         }
         
@@ -808,7 +817,7 @@
         </div>
     </div>
 
-       <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
+         <!-- ================= 底部通知 & 使用须知 (固定显示) ================= -->
     <div class="footer-notice">
         <!-- 左侧：解除锁定提示 -->
         <div class="footer-section">
@@ -825,11 +834,11 @@
             </div>
         </div>
         
-        <!-- 右侧：使用须知 & 作者 (单行紧凑版) -->
+        <!-- 右侧：使用须知 & 作者 (显眼提示框版) -->
         <div class="footer-section">
-            <div class="compact-notice">
-                <p>★ 本工具仅用于处理自作的行走图或公开授权的素材 <span class="separator">|</span> 请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</p>
-                <p>★ 作者：幻爱 / Huanaiyka <span class="separator">|</span> 发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
+            <div class="notice-info-box">
+                <p>★ 本工具仅用于处理自作的行走图或公开授权的素材 <span class="sep">|</span> 请勿未经允许处理、提取或分发他人的游戏画像及商业素材。</p>
+                <p>★ 作者：幻爱 / Huanaiyka <span class="sep">|</span> 发布页：<a href="https://github.com/huanaiyka/MZ-Plugins" target="_blank" rel="noopener">https://github.com/huanaiyka/MZ-Plugins</a></p>
             </div>
         </div>
     </div>
