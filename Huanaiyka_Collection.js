@@ -1,86 +1,76 @@
 /*:
  * @target MZ
- * @plugindesc 礼物展示柜
+ * @plugindesc 礼物展示柜（参数逐张配置图片与对应道具）
  * @author 幻爱
  * @url https://github.com/huanaiyka/MZ-Plugins
  * @help
  * ============================================================
- *  Huanaiyka_Collection - 礼物展示柜
+ *  Huanaiyka_Collection - 礼物展示柜（参数配置版）
  * ============================================================
  *
  * 【功能简介】
- * 打开一个展示柜界面，玩家可以把背包中带有指定标记的道具
- * （如伊布玩偶、手写册等）以图片形式摆在柜子上，并用鼠标
- * 或触屏自由拖拽调整位置。位置会自动保存到存档中。
+ * 打开一个展示柜界面，按插件参数中配置的每一张图片，
+ * 依次摆放在柜子上，可用鼠标或触屏自由拖拽调整位置。
+ * 位置会自动保存到存档中。
+ *
+ * 每张图片可绑定一个「对应道具」：只有玩家持有该道具时，
+ * 这张图片才会出现在展示柜中；未绑定道具的图片始终显示。
  *
  * 此外，开启「修改使用效果为查看图片」参数后，玩家在菜单 → 道具
- * 中对收藏品按确定键即可直接查看对应图片（不消耗道具）。
+ * 中对带 <Collectible: 图片名> 备注的道具按确定键即可查看对应图片
+ *（不消耗道具）。
  *
  * ------------------------------------------------------------
  * 【第一步：准备图片】
  * ------------------------------------------------------------
- * 把展示柜背景图和每个收藏品的图片放进 img/pictures/ 文件夹。
- *
- * 要求：
- *    - 格式为 PNG（收藏品建议去底透明）
- *    - 文件名建议用英文或数字，避免空格和特殊字符
- *
- * 例如：
- *    img/pictures/CabinetBG.png   展示柜背景
- *    img/pictures/EeveeDoll.png   伊布玩偶
- *    img/pictures/Notebook.png    手写册
+ * 把展示柜背景图和每张收藏品图片放进 img/pictures/ 文件夹。
+ * 要求 PNG 格式，文件名建议用英文或数字。
  *
  * ------------------------------------------------------------
- * 【第二步：给道具绑定图片】
+ * 【第二步：配置背景】
  * ------------------------------------------------------------
- * 打开 数据库 - 道具（或武器、防具），在道具的备注栏写入：
- *
- *    Collectible: 图片文件名
- *
- * 外面要套上尖括号，例如：
- *
- *    <Collectible: EeveeDoll>
- *    <Collectible: Notebook>
- *
- * 注意：
- *    - 冒号后一个空格，图片名前后不要有多余空格
- *    - 图片名不带 .png 扩展名
- *    - 插件会自动扫描 道具 / 武器 / 防具 三类
+ * 插件参数「展示柜背景」选择背景图（不含扩展名）。
  *
  * ------------------------------------------------------------
- * 【第三步：让玩家获得道具】
+ * 【第三步：配置图片与对应道具】
  * ------------------------------------------------------------
- * 光在数据库建好还不够，玩家必须真的持有该道具。
- * 用事件指令「增加道具」把礼物发给玩家即可。
+ * 在插件管理器中编辑「图片列表」参数，每一项包含：
+ *   - 图片文件名（不含 .png）
+ *   - 对应道具（可选：道具 / 武器 / 防具；留空表示始终显示）
+ *   - 存档标识（留空则使用图片文件名；同一标识共享位置）
+ *   - X / Y 坐标（留空表示自动排列）
+ *   - 缩放（留空使用全局缩放）
+ *   - 是否可拖拽
+ *
+ * 位置以「存档标识」为键保存到存档，同一标识共享位置。
  *
  * ------------------------------------------------------------
- * 【第四步：在事件中调用插件命令】
+ * 【第四步：让玩家获得对应道具】
  * ------------------------------------------------------------
- * 在地图事件里选择：插件命令 - Huanaiyka_Collection - OpenCabinet
- *
- * 参数 Background 填展示柜背景图文件名（不带扩展名）。
- * 例如：CabinetBG
+ * 用事件指令「增加道具」把绑定的道具发给玩家，对应图片就会
+ * 出现在展示柜中。若未绑定道具，则图片始终显示。
  *
  * ------------------------------------------------------------
- * 【第五步（可选）：在菜单中查看收藏品图片】
+ * 【第五步：在事件中调用插件命令】
+ * ------------------------------------------------------------
+ * 插件命令 - Huanaiyka_Collection - OpenCabinet
+ * 直接执行即可，背景由插件参数决定。
+ *
+ * ------------------------------------------------------------
+ * 【第六步（可选）：在菜单中查看收藏品图片】
  * ------------------------------------------------------------
  * 开启「修改使用效果为查看图片」后，在菜单 → 道具 中对带
- * <Collectible: 图片名> 标记的道具按确定键，即可查看对应图片，
- * 不消耗道具、不执行原效果。再次按确定/取消/ESC/右键/点击关闭。
- *
- * 开启「使用场所改为仅在菜单使用」后，这些道具会被强制视为
- * 仅菜单使用（覆盖数据库原设置），战斗中与事件指令中不可用。
+ * <Collectible: 图片名> 备注的道具按确定键，即可查看对应图片。
+ * 此功能依赖道具备注，与展示柜参数中的「对应道具」相互独立。
  *
  * ------------------------------------------------------------
  * 【玩家操作】
  * ------------------------------------------------------------
  * 展示柜界面：
- *    - 鼠标或触屏按住收藏品 ：拖动位置
- *    - 松手                 ：自动保存位置
- *    - 确定键（Z/空格/回车） ：隐藏或显示底部提示栏
- *    - 取消键（X/ESC/右键）  ：退出展示柜
- *
- * 提示：拖拽过程中按确定键或取消键，也会结束拖拽并保存。
+ *    - 鼠标或触屏按住图片 ：拖动位置（仅可拖拽的图片）
+ *    - 松手               ：自动保存位置
+ *    - 确定键             ：隐藏或显示底部提示栏
+ *    - 取消键             ：退出展示柜
  *
  * 菜单查看图片：
  *    - 确定键 / 取消键 / ESC / 右键 / 点击屏幕 ：关闭图片
@@ -88,18 +78,28 @@
  * ------------------------------------------------------------
  * 【参数说明】
  * ------------------------------------------------------------
+ * Background        展示柜背景
+ * PictureList       图片列表（每项一张图，可绑定对应道具）
  * ViewPicture       修改使用效果为查看图片（默认开启）
  * MenuOnly          使用场所改为仅在菜单使用（默认开启）
- * OffsetX           整体横向偏移（正数右移，负数左移）
- * OffsetY           整体纵向偏移（正数下移，负数上移）
- * SpacingX          多个收藏品自动排列时的横向间距
- * SpacingY          多个收藏品自动排列时的纵向间距
- * Columns           自动排列时每行放几个（默认 4）
- * Scale             收藏品图片整体缩放（1.0 = 原始大小）
+ * Scale             全局图片缩放（列表项未填缩放时使用）
  * DragOnTop         拖拽时是否把图片置顶显示
  * HelpVisible       打开时提示栏是否默认显示
  * HelpText          底部提示栏的文字内容
  * ============================================================
+ *
+ * @param Background
+ * @text 展示柜背景
+ * @desc 展示柜背景图片文件名（不含扩展名，放在 img/pictures/ 下）
+ * @type file
+ * @dir img/pictures/
+ * @default CabinetBG
+ *
+ * @param PictureList
+ * @text 图片列表
+ * @desc 逐张配置要展示的图片及其对应道具。可增删条目。
+ * @type struct<PictureEntry>[]
+ * @default []
  *
  * @param ViewPicture
  * @text 修改使用效果为查看图片
@@ -117,49 +117,9 @@
  * @off 否
  * @default true
  *
- * @param OffsetX
- * @text 整体横向偏移
- * @desc 整体横向偏移量。正数右移，负数左移。默认 0 即屏幕正中间
- * @type number
- * @min -9999
- * @max 9999
- * @default 0
- *
- * @param OffsetY
- * @text 整体纵向偏移
- * @desc 整体纵向偏移量。正数下移，负数上移。默认 0 即屏幕正中间
- * @type number
- * @min -9999
- * @max 9999
- * @default 0
- *
- * @param SpacingX
- * @text 横向间距
- * @desc 多个收藏品自动排列时的横向间距
- * @type number
- * @min 0
- * @max 9999
- * @default 120
- *
- * @param SpacingY
- * @text 纵向间距
- * @desc 多个收藏品自动排列时的纵向间距
- * @type number
- * @min 0
- * @max 9999
- * @default 120
- *
- * @param Columns
- * @text 每行数量
- * @desc 自动排列时每行放几个收藏品
- * @type number
- * @min 1
- * @max 20
- * @default 4
- *
  * @param Scale
- * @text 图片缩放
- * @desc 收藏品图片的整体缩放比例。1.0 表示原始大小
+ * @text 全局图片缩放
+ * @desc 图片列表中未填写缩放时使用的默认缩放比例。1.0 表示原始大小
  * @type number
  * @decimals 2
  * @min 0.1
@@ -186,18 +146,65 @@
  * @text 提示栏文字
  * @desc 底部提示栏显示的文字内容
  * @type string
- * @default 拖拽收藏品调整位置 | 确定键隐藏提示 | 取消键退出
+ * @default 拖拽图片调整位置 | 确定键隐藏提示 | 取消键退出
  *
  * @command OpenCabinet
  * @text 打开收藏柜
  * @desc 打开收藏品展示柜界面
- *
- * @arg Background
- * @text 背景图片
- * @desc 展示柜的背景图片文件名（不含扩展名）
+ */
+
+/*~struct~PictureEntry:
+ * @param Picture
+ * @text 图片文件名
+ * @desc 收藏品图片文件名（不含扩展名，放在 img/pictures/ 下）
  * @type file
  * @dir img/pictures/
- * @default CabinetBG
+ * @default
+ *
+ * @param ItemId
+ * @text 对应道具
+ * @desc 绑定一个道具/武器/防具。玩家持有该道具时才显示此图。留空表示始终显示
+ * @type item
+ * @default 0
+ *
+ * @param Key
+ * @text 存档标识
+ * @desc 用于在存档中保存位置的唯一标识。留空则使用图片文件名。同一标识共享位置
+ * @type string
+ * @default
+ *
+ * @param X
+ * @text X 坐标
+ * @desc 初始 X 坐标（像素）。留空表示按自动排列计算
+ * @type number
+ * @min -99999
+ * @max 99999
+ * @default
+ *
+ * @param Y
+ * @text Y 坐标
+ * @desc 初始 Y 坐标（像素）。留空表示按自动排列计算
+ * @type number
+ * @min -99999
+ * @max 99999
+ * @default
+ *
+ * @param Scale
+ * @text 缩放
+ * @desc 该图片的缩放比例。留空表示使用全局缩放
+ * @type number
+ * @decimals 2
+ * @min 0.1
+ * @max 10
+ * @default
+ *
+ * @param Draggable
+ * @text 可拖拽
+ * @desc 该图片是否允许玩家拖拽调整位置
+ * @type boolean
+ * @on 是
+ * @off 否
+ * @default true
  */
 
 (() => {
@@ -205,18 +212,61 @@
     const params = PluginManager.parameters(pluginName);
 
     // ==================== 参数读取 ====================
+    function parseNumber(value, fallback) {
+        if (value === undefined || value === null || value === "") return fallback;
+        const n = Number(value);
+        return isNaN(n) ? fallback : n;
+    }
+
+    function parseBoolean(value, fallback) {
+        if (value === undefined || value === null || value === "") return fallback;
+        return value === "true";
+    }
+
+    // 解析 struct 数组（MZ 中数组元素是 JSON 字符串）
+    function parsePictureList(raw) {
+        const result = [];
+        let list = [];
+        try {
+            list = JSON.parse(raw || "[]");
+        } catch (e) {
+            list = [];
+        }
+        if (!Array.isArray(list)) list = [];
+        for (const rawEntry of list) {
+            let entry = rawEntry;
+            if (typeof entry === "string") {
+                try {
+                    entry = JSON.parse(entry);
+                } catch (e) {
+                    entry = {};
+                }
+            }
+            if (!entry || typeof entry !== "object") continue;
+            const picture = String(entry.Picture || "").trim();
+            if (!picture) continue;
+            result.push({
+                picture: picture,
+                itemId: parseNumber(entry.ItemId, 0) || 0,
+                key: String(entry.Key || "").trim() || picture,
+                x: parseNumber(entry.X, null),
+                y: parseNumber(entry.Y, null),
+                scale: parseNumber(entry.Scale, null),
+                draggable: parseBoolean(entry.Draggable, true)
+            });
+        }
+        return result;
+    }
+
     const PARAM = {
-        offsetX:     Number(params.OffsetX     || 0),
-        offsetY:     Number(params.OffsetY     || 0),
-        spacingX:    Number(params.SpacingX    || 120),
-        spacingY:    Number(params.SpacingY    || 120),
-        columns:     Number(params.Columns     || 4),
-        scale:       Number(params.Scale       || 1.0),
-        dragOnTop:   params.DragOnTop   === "true",
-        helpVisible: params.HelpVisible === "true",
-        helpText:    params.HelpText    || "拖拽收藏品调整位置 | 确定键隐藏提示 | 取消键退出",
-        viewPicture: params.ViewPicture === "true",
-        menuOnly:    params.MenuOnly    === "true"
+        background:  String(params.Background || "").trim() || "CabinetBG",
+        pictureList: parsePictureList(params.PictureList),
+        scale:       parseNumber(params.Scale, 1.0),
+        dragOnTop:   parseBoolean(params.DragOnTop, true),
+        helpVisible: parseBoolean(params.HelpVisible, true),
+        helpText:    params.HelpText || "拖拽图片调整位置 | 确定键隐藏提示 | 取消键退出",
+        viewPicture: parseBoolean(params.ViewPicture, true),
+        menuOnly:    parseBoolean(params.MenuOnly, true)
     };
 
     // ==================== 数据管理 ====================
@@ -235,21 +285,57 @@
         }
     };
 
-    Game_System.prototype.getCollectiblePosition = function(itemId) {
+    Game_System.prototype.getCollectiblePosition = function(key) {
         if (!this._collectiblePositions) {
             this._collectiblePositions = {};
         }
-        return this._collectiblePositions[itemId] || null;
+        return this._collectiblePositions[key] || null;
     };
 
-    Game_System.prototype.setCollectiblePosition = function(itemId, x, y) {
+    Game_System.prototype.setCollectiblePosition = function(key, x, y) {
         if (!this._collectiblePositions) {
             this._collectiblePositions = {};
         }
-        this._collectiblePositions[itemId] = { x: x, y: y };
+        this._collectiblePositions[key] = { x: x, y: y };
     };
 
-    // ==================== 收藏品判定 ====================
+    // ==================== 道具判定 ====================
+
+    // 根据 itemId 查找道具/武器/防具对象
+    // MZ 的 @type item 参数值可能是 "i123" / "w12" / "a5" 这样的字符串，
+    // 也可能直接是数字 ID。这里统一解析。
+    function resolveItemById(idValue) {
+        if (!idValue) return null;
+        const str = String(idValue).trim();
+        if (!str || str === "0") return null;
+
+        let type = "item";
+        let id = 0;
+        const m = str.match(/^([iwa])(\d+)$/i);
+        if (m) {
+            const prefix = m[1].toLowerCase();
+            type = prefix === "i" ? "item" : prefix === "w" ? "weapon" : "armor";
+            id = Number(m[2]);
+        } else {
+            id = Number(str);
+        }
+        if (!id) return null;
+
+        if (type === "item")   return $dataItems[id] || null;
+        if (type === "weapon") return $dataWeapons[id] || null;
+        if (type === "armor")  return $dataArmors[id] || null;
+        return null;
+    }
+
+    // 判断玩家是否持有该条目对应的道具（未绑定则视为始终持有）
+    function isEntryOwned(entry) {
+        if (!entry.itemId) return true;
+        const item = resolveItemById(entry.itemId);
+        if (!item) return false;
+        return $gameParty.hasItem(item);
+    }
+
+    // ==================== 收藏品判定（仅菜单查看图片功能使用） ====================
 
     function isCollectibleItem(item) {
         if (!item || !item.meta) return false;
@@ -257,7 +343,6 @@
         return name && String(name).trim() !== "";
     }
 
-    // 只在菜单道具场景里对收藏品放行，其它场景保持原版
     function isInItemScene() {
         return SceneManager._scene instanceof Scene_Item;
     }
@@ -265,7 +350,6 @@
     // ==================== 使用场所强制覆盖（仅菜单） ====================
 
     if (PARAM.menuOnly) {
-        // 1) 数据库加载后，把所有收藏品的 occasion 覆盖为 2（仅菜单）
         const _DataManager_isDatabaseLoaded = DataManager.isDatabaseLoaded;
         DataManager.isDatabaseLoaded = function() {
             if (!_DataManager_isDatabaseLoaded.call(this)) return false;
@@ -281,7 +365,6 @@
             return true;
         };
 
-        // 2) 菜单道具列表条目：收藏品始终可选、不变灰
         const _Window_ItemList_isEnabled = Window_ItemList.prototype.isEnabled;
         Window_ItemList.prototype.isEnabled = function(item) {
             if (item && isCollectibleItem(item) && isInItemScene()) {
@@ -290,7 +373,6 @@
             return _Window_ItemList_isEnabled.call(this, item);
         };
 
-        // 3) 当前条目确定键有效
         const _Window_ItemList_isCurrentItemEnabled = Window_ItemList.prototype.isCurrentItemEnabled;
         Window_ItemList.prototype.isCurrentItemEnabled = function() {
             const item = this.item();
@@ -300,7 +382,6 @@
             return _Window_ItemList_isCurrentItemEnabled.call(this);
         };
 
-        // 4) 最终校验：允许在菜单里使用收藏品
         const _Game_Party_canUse = Game_Party.prototype.canUse;
         Game_Party.prototype.canUse = function(item) {
             if (item && isCollectibleItem(item) && isInItemScene()) {
@@ -310,7 +391,7 @@
         };
     }
 
-    // ==================== 场景类 ====================
+    // ==================== 展示柜场景 ====================
 
     function Scene_CollectibleCabinet() {
         this.initialize(...arguments);
@@ -321,16 +402,12 @@
 
     Scene_CollectibleCabinet.prototype.initialize = function() {
         Scene_MenuBase.prototype.initialize.call(this);
-        this._background = "CabinetBG";
+        this._background = PARAM.background;
         this._sprites = [];
         this._draggingSprite = null;
         this._dragOffsetX = 0;
         this._dragOffsetY = 0;
         this._helpVisible = PARAM.helpVisible;
-    };
-
-    Scene_CollectibleCabinet.prototype.prepare = function(background) {
-        this._background = background || "CabinetBG";
     };
 
     Scene_CollectibleCabinet.prototype.create = function() {
@@ -357,74 +434,73 @@
     };
 
     Scene_CollectibleCabinet.prototype.createCollectibleSprites = function() {
-        const items = this.getCollectibleItems();
-        const cols = PARAM.columns;
+        // 只取玩家已持有对应道具（或未绑定道具）的条目
+        const list = PARAM.pictureList.filter(entry => isEntryOwned(entry));
+        const centerX = Graphics.boxWidth / 2;
+        const centerY = Graphics.boxHeight / 2;
 
-        const centerX = Graphics.boxWidth  / 2 + PARAM.offsetX;
-        const centerY = Graphics.boxHeight / 2 + PARAM.offsetY;
+        // 自动排列参数（未填坐标时使用）
+        const cols = 4;
+        const spacingX = 120;
+        const spacingY = 120;
 
-        let index = 0;
-        for (const item of items) {
-            const pos = $gameSystem.getCollectiblePosition(item.id);
+        // 先统计需要自动排列的条目数量，用于居中对齐
+        const autoCount = list.filter(e => e.x === null && e.y === null).length;
+
+        let autoIndex = 0;
+
+        for (let i = 0; i < list.length; i++) {
+            const entry = list[i];
+            const saved = $gameSystem.getCollectiblePosition(entry.key);
 
             let x, y;
-            if (pos) {
-                x = pos.x;
-                y = pos.y;
+            if (saved) {
+                x = saved.x;
+                y = saved.y;
             } else {
-                const row = Math.floor(index / cols);
-                const col = index % cols;
-                const itemsInRow = Math.min(cols, items.length - row * cols);
-                const rowOffset = (col - (itemsInRow - 1) / 2) * PARAM.spacingX;
-                x = centerX + rowOffset;
-                y = centerY + (row - 0.5) * PARAM.spacingY;
+                // 优先使用配置的坐标，缺省则自动排列
+                if (entry.x !== null && entry.y !== null) {
+                    x = entry.x;
+                    y = entry.y;
+                } else if (entry.x !== null) {
+                    x = entry.x;
+                    y = centerY;
+                } else if (entry.y !== null) {
+                    x = centerX;
+                    y = entry.y;
+                } else {
+                    const row = Math.floor(autoIndex / cols);
+                    const col = autoIndex % cols;
+                    const itemsInRow = Math.min(cols, autoCount - row * cols);
+                    const rowOffset = (col - (itemsInRow - 1) / 2) * spacingX;
+                    x = centerX + rowOffset;
+                    y = centerY + (row - 0.5) * spacingY;
+                    autoIndex++;
+                }
             }
 
             const sprite = new Sprite();
-            sprite.bitmap = ImageManager.loadPicture(item.picture);
+            sprite.bitmap = ImageManager.loadPicture(entry.picture);
             sprite.x = x;
             sprite.y = y;
-            sprite._itemId = item.id;
-            sprite._pictureName = item.picture;
+            sprite._positionKey = entry.key;
+            sprite._pictureName = entry.picture;
+            sprite._draggable = entry.draggable;
 
-            sprite.scale.x = PARAM.scale;
-            sprite.scale.y = PARAM.scale;
+            const scale = entry.scale !== null ? entry.scale : PARAM.scale;
+            sprite.scale.x = scale;
+            sprite.scale.y = scale;
 
             sprite.anchor.x = 0.5;
             sprite.anchor.y = 0.5;
 
             this.addChild(sprite);
             this._sprites.push({
-                itemId: item.id,
+                key: entry.key,
                 sprite: sprite,
-                data: item
-            });
-
-            index++;
-        }
-    };
-
-    Scene_CollectibleCabinet.prototype.getCollectibleItems = function() {
-        const items = [];
-        const allItems = $dataItems.concat($dataWeapons, $dataArmors);
-
-        for (const item of allItems) {
-            if (!item) continue;
-            if (!item.meta) continue;
-            if (!item.meta.Collectible) continue;
-            if (!$gameParty.hasItem(item)) continue;
-
-            const pictureName = String(item.meta.Collectible).trim();
-            if (!pictureName) continue;
-
-            items.push({
-                id: item.id,
-                picture: pictureName,
-                name: item.name
+                data: entry
             });
         }
-
-        return items;
     };
 
     // ==================== 交互处理 ====================
@@ -448,7 +524,7 @@
                 Input.isTriggered("ok") ||
                 Input.isTriggered("cancel")) {
                 $gameSystem.setCollectiblePosition(
-                    this._draggingSprite._itemId,
+                    this._draggingSprite._positionKey,
                     Math.round(this._draggingSprite.x),
                     Math.round(this._draggingSprite.y)
                 );
@@ -466,6 +542,8 @@
         for (let i = this._sprites.length - 1; i >= 0; i--) {
             const entry = this._sprites[i];
             const sprite = entry.sprite;
+
+            if (!sprite._draggable) continue;
 
             const bitmap = sprite.bitmap;
             if (!bitmap || !bitmap.isReady()) continue;
@@ -519,15 +597,12 @@
 
     // ==================== 插件管理器命令注册 ====================
 
-    PluginManager.registerCommand(pluginName, "OpenCabinet", args => {
-        const background = args.Background || "CabinetBG";
+    PluginManager.registerCommand(pluginName, "OpenCabinet", () => {
         SceneManager.push(Scene_CollectibleCabinet);
-        SceneManager.prepareNextScene(background);
     });
 
     // ==================== 收藏品查看功能 ====================
 
-    // ---------- 在菜单场景内叠加显示图片，不切换场景 ----------
     const _Scene_Item_useItem = Scene_Item.prototype.useItem;
     Scene_Item.prototype.useItem = function() {
         if (PARAM.viewPicture) {
@@ -541,9 +616,7 @@
         _Scene_Item_useItem.call(this);
     };
 
-    // 在 Scene_Item 上添加显示/隐藏图片的方法
     Scene_Item.prototype.showCollectiblePicture = function(pictureName) {
-        // 如果已经有图片在显示，先移除（避免叠加）
         this.hideCollectiblePicture();
 
         const sprite = new Sprite();
@@ -572,17 +645,14 @@
         }
     };
 
-    // 覆写 Scene_Item 的 update：有图片显示时，任意确定/取消键都关闭图片，并拦截菜单输入
     const _Scene_Item_update = Scene_Item.prototype.update;
     Scene_Item.prototype.update = function() {
         if (this._collectibleSprite) {
-            // 只处理关闭逻辑，不往下传，避免菜单同时响应
             if (Input.isTriggered("cancel") || Input.isTriggered("escape") ||
                 Input.isTriggered("ok") || TouchInput.isCancelled() ||
                 TouchInput.isTriggered()) {
                 this.hideCollectiblePicture();
             }
-            // 仍然刷新菜单动画，但不处理输入
             Window.prototype.update.call(this._itemWindow);
             Window.prototype.update.call(this._helpWindow);
             return;
