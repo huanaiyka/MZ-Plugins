@@ -62,6 +62,7 @@ Plugins for RPG Maker MZ
 | [Huanaiyka_PlayerControlEnemies.js](Huanaiyka_PlayerControlEnemies.js) | **强制指定敌方操作**<br><sub>本插件允许玩家在战斗中手动控制敌人的行动，包括攻击、防御和使用技能。适用于调试、测试或特殊的游戏机制设计。</sub> |
 | [Huanaiyka_StateConflictNoReset.js](Huanaiyka_StateConflictNoReset.js) | **状态互斥，状态回合不重置**<br><sub>1. 状态互斥：同一互斥组内的状态不能共存（后来的状态不会附加）<br>2. 状态回合不重置：同一状态再次附加时，不重置剩余回合数</sub> |
 | [Huanaiyka_StateEndure.js](Huanaiyka_StateEndure.js) | **制作挺住状态，受到致死打击后维持1HP**<br><sub>给状态（State）使用 `<Endure>` 备注标签。当角色/敌人身上带有该标签的状态时，若受到足以致死的伤害，血量会被强制保留在 1 HP，实现「挺住」效果。</sub> |
+| [Huanaiyka_StateNoDamage.js](Huanaiyka_StateNoDamage.js) | **状态免疫所有HP伤害**<br><sub>在状态的备注栏中填入 `<StateNoDamage>`，拥有该状态的角色/敌人受到任何扣血攻击时，HP 伤害强制为 0。</sub> |
 
 ### 技能与属性
 
