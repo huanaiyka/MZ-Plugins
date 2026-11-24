@@ -52,7 +52,7 @@ Plugins for RPG Maker MZ
 | [Huanaiyka_BattleResultDelay.js](Huanaiyka_BattleResultDelay.js) | **敌群页延迟执行战斗结果**<br><sub>在敌群事件页中使用四个插件指令，分别标记通用、胜利、失败、逃跑时延迟执行的事件指令块。战斗结束后，按「通用块 → 结果块」的顺序在地图上执行。本插件的优势在于能够更好地控制随机遇敌等场景下的执行流程。</sub> |
 | [Huanaiyka_ChampionshipSystem.js](Huanaiyka_ChampionshipSystem.js) | **擂台赛模拟器**<br><sub>本插件用于实现多轮淘汰制擂台赛：<br>1. 从预设敌群池中按出现概率抽取指定数量作为对手。<br>2. 每轮玩家随机与一组敌群战斗，其余敌群按基础胜率与克制关系模拟内部淘汰。<br>3. 最终决出冠军，玩家与冠军敌群对战。<br>4. 若玩家在中途战败，只需调用“一键决出总冠军”指令，系统将自动完成剩余模拟，合并输出所有战报，并直接返回最终冠军 ID。</sub> |
 | [Huanaiyka_DeadExpGain.js](Huanaiyka_DeadExpGain.js) | **让死亡的同伴也能获得一定比例经验值**<br><sub>在战斗胜利时，死亡的角色默认无法获得经验值。本插件允许死亡角色获得一定比例的经验值，默认为50%。</sub> |
-| [Huanaiyka_EnemyParamRate.js](Huanaiyka_EnemyParamRate.js) | **通过备注标签为敌人设置能力值倍率**<br><sub>本插件允许你在敌人的备注栏中写入特定标签，从而直接提升或降低该敌人的各项基础属性倍率。倍率会作用于数据库原始数值，然后再与特性叠加计算。</sub> |
+| [Huanaiyka_EnemyParamRate.js](Huanaiyka_EnemyParamRate.js) | **通过备注标签为敌人设置能力值倍率**<br><sub>1. 敌人备注标签设置能力值倍率。2. 插件参数中配置"变体列表"，按几率遇到高倍率敌人，且每个变体可以有自己的单独称呼。</sub> |
 | [Huanaiyka_EnemyStateImage.js](Huanaiyka_EnemyStateImage.js) | **状态备注控制敌人透明度**<br><sub>本插件允许通过在状态的备注中添加标签，动态调整敌人精灵的透明度。</sub> |
 | [Huanaiyka_EnemyTargetAI.js](Huanaiyka_EnemyTargetAI.js) | **敌人智能AI：不会对目标使用元素无效的技能，并支持进攻偏好**<br><sub>本插件让敌人更智能：<br>1. 自动避开元素无效技能（不会用火焰打火免疫角色）。<br>2. 支持进攻偏好规则（优先打血量最低、带有特定状态、被属性克制、六围高低、指定名字/ID、变量动态名字、基于最大值等）。<br>3. 在技能的备注栏中填写 `<SkillNoSelf>`，敌人绝不会选择自己作为目标。</sub> |
 | [Huanaiyka_EnemyTransformDynamic.js](Huanaiyka_EnemyTransformDynamic.js) | **智能敌人伪装系统**<br><sub>1. 在插件参数中配置所有伪装角色的名字、战斗图、对话框头像和地图行走图。<br>2. 自动寻找带有 `<disguiser>` 标签的敌人或地图事件，并根据“伪装ID”瞬间完成变身。<br>3. 提供“伪装者发言”指令，自动适配变身/本体状态下的名字和头像。<br>扩展应用：事件自动切换为对应的行走图、名字和头像，实现随机路人等效果。</sub> |
